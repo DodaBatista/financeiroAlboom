@@ -144,7 +144,7 @@ const AccountsPayable = () => {
     const end = new Date(endDate);
     
     const dateMatch = titleDate >= start && titleDate <= end;
-    const freelancerMatch = !selectedFreelancer || title.freelancer_name === selectedFreelancer;
+    const freelancerMatch = !selectedFreelancer || selectedFreelancer === 'all' || title.freelancer_name === selectedFreelancer;
     
     return dateMatch && freelancerMatch;
   });
@@ -287,7 +287,7 @@ const AccountsPayable = () => {
                           className="mb-2"
                         />
                       </div>
-                      <SelectItem value="">Todos os freelancers</SelectItem>
+                      <SelectItem value="all">Todos os freelancers</SelectItem>
                       {filteredFreelancers.map(freelancer => (
                         <SelectItem key={freelancer.id} value={freelancer.name}>
                           {freelancer.name}

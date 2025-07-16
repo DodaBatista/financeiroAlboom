@@ -19,6 +19,7 @@ interface PayableTitle {
   type: string;
   order: string;
   freelancer_name: string;
+  freelancer_id: string; // ID to be sent to API
   observations: string;
   user_name: string;
   user_avatar: string;
@@ -70,7 +71,7 @@ const AccountsPayable = () => {
     setEndDate(lastDay.toISOString().split('T')[0]);
   }, []);
 
-  // Mock data - simular dados da API
+  // Mock data - expanded for better testing
   useEffect(() => {
     const mockTitles: PayableTitle[] = [
       {
@@ -81,6 +82,7 @@ const AccountsPayable = () => {
         type: 'Serviço',
         order: 'PED-2024-001',
         freelancer_name: 'João Silva',
+        freelancer_id: '1',
         observations: 'Desenvolvimento de sistema de gestão financeira com interface responsiva e funcionalidades completas de relatórios',
         user_name: 'Admin',
         user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
@@ -95,6 +97,7 @@ const AccountsPayable = () => {
         type: 'Consultoria',
         order: 'PED-2024-002',
         freelancer_name: 'Maria Santos',
+        freelancer_id: '2',
         observations: 'Consultoria em arquitetura de software',
         user_name: 'Gerente',
         user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=manager',
@@ -109,6 +112,7 @@ const AccountsPayable = () => {
         type: 'Design',
         order: 'PED-2024-003',
         freelancer_name: 'Pedro Costa',
+        freelancer_id: '3',
         observations: 'Criação de identidade visual completa',
         user_name: 'Designer',
         user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=designer',
@@ -123,10 +127,131 @@ const AccountsPayable = () => {
         type: 'Marketing',
         order: 'PED-2024-004',
         freelancer_name: 'Ana Oliveira',
+        freelancer_id: '4',
         observations: 'Campanha de marketing digital',
         user_name: 'Marketing',
         user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=marketing',
-        amount: 1500.00,
+        amount: 0, // Test case for disabled payment button
+        status: 'pending'
+      },
+      {
+        id: '5',
+        emission_date: '2024-01-20',
+        due_date: '2024-02-10',
+        document: 'REC-005',
+        type: 'Recibo',
+        order: 'PED-2024-005',
+        freelancer_name: 'João Silva',
+        freelancer_id: '1',
+        observations: 'Implementação de API REST com autenticação JWT',
+        user_name: 'Tech Lead',
+        user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=tech',
+        amount: 1950.50,
+        status: 'pending'
+      },
+      {
+        id: '6',
+        emission_date: '2024-01-22',
+        due_date: '2024-02-15',
+        document: 'NF-006',
+        type: 'Desenvolvimento',
+        order: 'PED-2024-006',
+        freelancer_name: 'Maria Santos',
+        freelancer_id: '2',
+        observations: 'Criação de dashboard analítico com gráficos interativos e relatórios em tempo real',
+        user_name: 'Product Owner',
+        user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=po',
+        amount: 2750.25,
+        status: 'pending'
+      },
+      {
+        id: '7',
+        emission_date: '2024-01-25',
+        due_date: '2024-02-20',
+        document: 'REC-007',
+        type: 'Consultoria',
+        order: 'PED-2024-007',
+        freelancer_name: 'Pedro Costa',
+        freelancer_id: '3',
+        observations: 'Auditoria de código e otimização de performance',
+        user_name: 'CTO',
+        user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=cto',
+        amount: 3100.00,
+        status: 'pending'
+      },
+      {
+        id: '8',
+        emission_date: '2024-01-28',
+        due_date: '2024-02-25',
+        document: 'NF-008',
+        type: 'UX/UI',
+        order: 'PED-2024-008',
+        freelancer_name: 'Ana Oliveira',
+        freelancer_id: '4',
+        observations: 'Redesign completo da interface mobile',
+        user_name: 'Design Lead',
+        user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=design',
+        amount: 2200.75,
+        status: 'pending'
+      },
+      {
+        id: '9',
+        emission_date: '2024-01-30',
+        due_date: '2024-03-01',
+        document: 'REC-009',
+        type: 'DevOps',
+        order: 'PED-2024-009',
+        freelancer_name: 'João Silva',
+        freelancer_id: '1',
+        observations: 'Configuração de pipeline CI/CD',
+        user_name: 'DevOps Lead',
+        user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=devops',
+        amount: 1800.90,
+        status: 'pending'
+      },
+      {
+        id: '10',
+        emission_date: '2024-02-01',
+        due_date: '2024-03-05',
+        document: 'NF-010',
+        type: 'Backend',
+        order: 'PED-2024-010',
+        freelancer_name: 'Maria Santos',
+        freelancer_id: '2',
+        observations: 'Desenvolvimento de microserviços',
+        user_name: 'Backend Lead',
+        user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=backend',
+        amount: 0, // Another test case for disabled payment
+        status: 'pending'
+      },
+      {
+        id: '11',
+        emission_date: '2024-02-03',
+        due_date: '2024-03-08',
+        document: 'REC-011',
+        type: 'QA',
+        order: 'PED-2024-011',
+        freelancer_name: 'Pedro Costa',
+        freelancer_id: '3',
+        observations: 'Testes automatizados e manuais',
+        user_name: 'QA Lead',
+        user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=qa',
+        amount: 1650.40,
+        status: 'pending'
+      },
+      {
+        id: '12',
+        emission_date: '2024-02-05',
+        due_date: '2024-03-10',
+        document: 'NF-012',
+        type: 'Segurança',
+        order: 'PED-2024-012',
+        freelancer_name: 'Ana Oliveira',
+        freelancer_id: '4',
+        observations: 'Implementação de medidas de segurança avançadas',
+        user_name: 'Security Lead',
+        user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=security',
+        amount: 2850.60,
         status: 'pending'
       }
     ];
@@ -144,7 +269,8 @@ const AccountsPayable = () => {
     const end = new Date(endDate);
     
     const dateMatch = titleDate >= start && titleDate <= end;
-    const freelancerMatch = !selectedFreelancer || selectedFreelancer === 'all' || title.freelancer_name === selectedFreelancer;
+    // When API is integrated, this will filter by freelancer_id
+    const freelancerMatch = !selectedFreelancer || selectedFreelancer === 'all' || title.freelancer_id === selectedFreelancer;
     
     return dateMatch && freelancerMatch;
   });
@@ -158,6 +284,9 @@ const AccountsPayable = () => {
 
   // Handlers
   const handleFilter = () => {
+    // In real implementation, this would send a request to the API with:
+    // - startDate, endDate (in yyyy-mm-dd format) 
+    // - selectedFreelancer (freelancer ID, not name)
     setCurrentPage(1);
     toast({
       title: "Filtros aplicados",
@@ -289,7 +418,7 @@ const AccountsPayable = () => {
                       </div>
                       <SelectItem value="all">Todos os freelancers</SelectItem>
                       {filteredFreelancers.map(freelancer => (
-                        <SelectItem key={freelancer.id} value={freelancer.name}>
+                        <SelectItem key={freelancer.id} value={freelancer.id}>
                           {freelancer.name}
                         </SelectItem>
                       ))}
@@ -297,41 +426,31 @@ const AccountsPayable = () => {
                   </Select>
                 </div>
 
-                <div className="flex items-end">
+                <div className="flex items-end gap-2">
                   <Button 
                     onClick={handleFilter}
                     disabled={isFilterDisabled}
-                    className="w-full"
+                    className="flex-1"
                     variant="default"
                   >
                     <Search className="h-4 w-4 mr-2" />
                     Filtrar
+                  </Button>
+                  
+                  <Button 
+                    variant="payment"
+                    onClick={handleMultiplePayment}
+                    disabled={selectedTitles.size === 0}
+                    className="flex-1"
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Baixar Selecionados ({selectedTitles.size})
                   </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Ações em massa */}
-          {selectedTitles.size > 0 && (
-            <Card className="shadow-card animate-slide-up bg-gradient-card">
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {selectedTitles.size} título(s) selecionado(s)
-                  </span>
-                  <Button 
-                    variant="payment" 
-                    onClick={handleMultiplePayment}
-                    className="animate-scale-in"
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Pagar Selecionados
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Tabela / Cards */}
           <Card className="shadow-financial animate-fade-in">

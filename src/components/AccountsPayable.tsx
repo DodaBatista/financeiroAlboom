@@ -6,9 +6,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, CreditCard, Search } from 'lucide-react';
+import { CheckCircle, CreditCard, RefreshCw, RotateCcw, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface PayableTitle {
@@ -32,6 +33,18 @@ interface Freelancer {
   name: string;
 }
 
+interface Bank {
+  id: string;
+  label: string;
+}
+
+interface PaymentRequest {
+  id: string;
+  title_id: string;
+  details: string;
+  status: 'Processado' | 'Em processamento' | 'Erro';
+}
+
 const AccountsPayable = () => {
   const { toast } = useToast();
   const [titles, setTitles] = useState<PayableTitle[]>([]);
@@ -40,6 +53,23 @@ const AccountsPayable = () => {
     { id: '2', name: 'Maria Santos' },
     { id: '3', name: 'Pedro Costa' },
     { id: '4', name: 'Ana Oliveira' },
+  ]);
+
+  // Mock data for banks and payment requests
+  const [banks] = useState<Bank[]>([
+    { id: '1', label: 'Banco do Brasil' },
+    { id: '2', label: 'Caixa' },
+    { id: '3', label: 'Bradesco' },
+    { id: '4', label: 'Itaú' },
+  ]);
+
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([
+    { id: '1', title_id: '1', details: 'Desenvolvimento de sistema de gestão', status: 'Processado' },
+    { id: '2', title_id: '2', details: 'Consultoria em arquitetura', status: 'Em processamento' },
+    { id: '3', title_id: '3', details: 'Criação de identidade visual', status: 'Erro' },
+    { id: '4', title_id: '4', details: 'Campanha de marketing digital', status: 'Processado' },
+    { id: '5', title_id: '5', details: 'Implementação de API REST', status: 'Em processamento' },
+    { id: '6', title_id: '6', details: 'Dashboard analítico', status: 'Erro' },
   ]);
   
   // Filtros
@@ -55,6 +85,12 @@ const AccountsPayable = () => {
   
   const [filteredTitles, setFilteredTitles] = useState<PayableTitle[]>([]);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState('titles');
+
+  // Payment requests filters
+  const [selectedStatus, setSelectedStatus] = useState('');
+
   // Modais
   const [paymentModal, setPaymentModal] = useState<{
     isOpen: boolean;
@@ -62,6 +98,10 @@ const AccountsPayable = () => {
     title?: PayableTitle;
     selectedCount?: number;
   }>({ isOpen: false, type: 'single' });
+
+  // Payment form state
+  const [selectedBank, setSelectedBank] = useState('');
+  const [paymentDate, setPaymentDate] = useState('');
 
   // Inicializar datas padrão (primeiro e último dia do mês atual)
   useEffect(() => {
@@ -335,6 +375,16 @@ const AccountsPayable = () => {
   };
 
   const confirmPayment = () => {
+    // Validate required fields
+    if (!selectedBank || !paymentDate) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Selecione um banco e data de pagamento",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (paymentModal.type === 'single') {
       toast({
         title: "Baixa realizada",
@@ -347,7 +397,57 @@ const AccountsPayable = () => {
       });
       setSelectedTitles(new Set());
     }
+    
+    // Reset form and close modal
+    setSelectedBank('');
+    setPaymentDate('');
     setPaymentModal({ isOpen: false, type: 'single' });
+  };
+
+  // Payment requests functions
+  const handleRefresh = () => {
+    toast({
+      title: "Dados atualizados",
+      description: "Lista de baixas solicitadas foi recarregada",
+    });
+  };
+
+  const handleReprocess = (requestId: string) => {
+    const randomSuccess = Math.random() > 0.5;
+    
+    if (randomSuccess) {
+      setPaymentRequests(prev => 
+        prev.map(req => 
+          req.id === requestId 
+            ? { ...req, status: 'Processado' }
+            : req
+        )
+      );
+      toast({
+        title: "Reprocessamento bem-sucedido",
+        description: "A baixa foi reprocessada com sucesso",
+      });
+    } else {
+      toast({
+        title: "Erro no reprocessamento",
+        description: "Não foi possível reprocessar a baixa. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Filter payment requests
+  const filteredPaymentRequests = paymentRequests.filter(request => 
+    !selectedStatus || request.status === selectedStatus
+  );
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'Processado': return 'default';
+      case 'Em processamento': return 'secondary';
+      case 'Erro': return 'destructive';
+      default: return 'outline';
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -379,278 +479,422 @@ const AccountsPayable = () => {
             <p className="text-muted-foreground">Sistema de gestão de títulos a pagar</p>
           </div>
 
-          {/* Filtros */}
-          <Card className="shadow-card animate-fade-in">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Search className="h-5 w-5 text-primary" />
-                Filtros
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Data Inicial *</label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    required
-                    className="w-full"
-                  />
-                </div>
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="titles">Títulos a Pagar</TabsTrigger>
+              <TabsTrigger value="requests">Baixas Solicitadas</TabsTrigger>
+            </TabsList>
 
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Data Final *</label>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    required
-                    className="w-full"
-                  />
-                </div>
+            {/* Tab 1: Títulos a Pagar */}
+            <TabsContent value="titles" className="space-y-6">
+              {/* Filtros */}
+              <Card className="shadow-card animate-fade-in">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Search className="h-5 w-5 text-primary" />
+                    Filtros
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Data Inicial *</label>
+                      <Input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        required
+                        className="w-full"
+                      />
+                    </div>
 
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Freelancer</label>
-                  <Select value={selectedFreelancer} onValueChange={setSelectedFreelancer}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um freelancer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <div className="p-2">
-                        <Input
-                          placeholder="Pesquisar freelancer..."
-                          value={freelancerSearch}
-                          onChange={(e) => setFreelancerSearch(e.target.value)}
-                          className="mb-2"
-                        />
-                      </div>
-                      <SelectItem value="all">Todos os freelancers</SelectItem>
-                      {filteredFreelancers.map(freelancer => (
-                        <SelectItem key={freelancer.id} value={freelancer.id}>
-                          {freelancer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Data Final *</label>
+                      <Input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        required
+                        className="w-full"
+                      />
+                    </div>
 
-                <div className="flex items-end gap-2">
-                  <Button 
-                    onClick={handleFilter}
-                    disabled={isFilterDisabled}
-                    className="flex-1"
-                    variant="default"
-                  >
-                    <Search className="h-4 w-4 mr-2" />
-                    Filtrar
-                  </Button>
-                  
-                  <Button 
-                    variant="payment"
-                    onClick={handleMultiplePayment}
-                    disabled={selectedTitles.size === 0}
-                    className="flex-1"
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Baixar ({selectedTitles.size})
-                  </Button>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Freelancer</label>
+                      <Select value={selectedFreelancer} onValueChange={setSelectedFreelancer}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um freelancer" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <div className="p-2">
+                            <Input
+                              placeholder="Pesquisar freelancer..."
+                              value={freelancerSearch}
+                              onChange={(e) => setFreelancerSearch(e.target.value)}
+                              className="mb-2"
+                            />
+                          </div>
+                          <SelectItem value="all">Todos os freelancers</SelectItem>
+                          {filteredFreelancers.map(freelancer => (
+                            <SelectItem key={freelancer.id} value={freelancer.id}>
+                              {freelancer.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                    <div className="flex items-end gap-2">
+                      <Button 
+                        onClick={handleFilter}
+                        disabled={isFilterDisabled}
+                        className="flex-1"
+                        variant="default"
+                      >
+                        <Search className="h-4 w-4 mr-2" />
+                        Filtrar
+                      </Button>
+                      
+                      <Button 
+                        variant="payment"
+                        onClick={handleMultiplePayment}
+                        disabled={selectedTitles.size === 0}
+                        className="flex-1"
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Baixar ({selectedTitles.size})
+                      </Button>
 
-    <div className="px-4 text-sm text-muted-foreground">
-      Total dos títulos selecionados: <span className="text-green-600 font-semibold">{formatCurrency(selectedTotal)}</span>
-    </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* Tabela / Cards */}
-          <Card className="shadow-financial animate-fade-in">
-            <CardContent className="p-0">
-              {/* Desktop Table */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50 border-b">
-                    <tr>
-                      <th className="p-4 text-left">
-                        <Checkbox
-                          checked={selectedTitles.size === paginatedTitles.length && paginatedTitles.length > 0}
-                          onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                        />
-                      </th>
-                      <th className="p-4 text-left text-sm font-medium">Emissão</th>
-                      <th className="p-4 text-left text-sm font-medium">Vencimento</th>
-                      <th className="p-4 text-left text-sm font-medium">Doc</th>
-                      <th className="p-4 text-left text-sm font-medium">Tipo</th>
-                      <th className="p-4 text-left text-sm font-medium">Pedido</th>
-                      <th className="p-4 text-left text-sm font-medium">Freelancer</th>
-                      <th className="p-4 text-left text-sm font-medium">Observações</th>
-                      <th className="p-4 text-left text-sm font-medium">Usuário</th>
-                      <th className="p-4 text-left text-sm font-medium">Valor</th>
-                      <th className="p-4 text-left text-sm font-medium">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+        <div className="px-4 text-sm text-muted-foreground">
+          Total dos títulos selecionados: <span className="text-green-600 font-semibold">{formatCurrency(selectedTotal)}</span>
+        </div>
+
+              {/* Tabela / Cards */}
+              <Card className="shadow-financial animate-fade-in">
+                <CardContent className="p-0">
+                  {/* Desktop Table */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50 border-b">
+                        <tr>
+                          <th className="p-4 text-left">
+                            <Checkbox
+                              checked={selectedTitles.size === paginatedTitles.length && paginatedTitles.length > 0}
+                              onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                            />
+                          </th>
+                          <th className="p-4 text-left text-sm font-medium">Emissão</th>
+                          <th className="p-4 text-left text-sm font-medium">Vencimento</th>
+                          <th className="p-4 text-left text-sm font-medium">Doc</th>
+                          <th className="p-4 text-left text-sm font-medium">Tipo</th>
+                          <th className="p-4 text-left text-sm font-medium">Pedido</th>
+                          <th className="p-4 text-left text-sm font-medium">Freelancer</th>
+                          <th className="p-4 text-left text-sm font-medium">Observações</th>
+                          <th className="p-4 text-left text-sm font-medium">Usuário</th>
+                          <th className="p-4 text-left text-sm font-medium">Valor</th>
+                          <th className="p-4 text-left text-sm font-medium">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedTitles.map((title) => (
+                          <tr key={title.id} className="border-b hover:bg-muted/20 transition-colors">
+                            <td className="p-4">
+                              <Checkbox
+                                checked={selectedTitles.has(title.id)}
+                                onCheckedChange={(checked) => handleSelectTitle(title.id, checked as boolean)}
+                              />
+                            </td>
+                            <td className="p-4 text-sm">{formatDate(title.emission_date)}</td>
+                            <td className="p-4 text-sm">{formatDate(title.due_date)}</td>
+                            <td className="p-4">
+                              <Badge variant="outline">{title.document}</Badge>
+                            </td>
+                            <td className="p-4 text-sm">{title.type}</td>
+                            <td className="p-4 text-sm font-mono">{title.order}</td>
+                            <td className="p-4 text-sm font-medium">{title.freelancer_name}</td>
+                            <td className="p-4 max-w-48">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="text-sm truncate text-left">
+                                    {title.observations}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-sm">
+                                  <p>{title.observations}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={title.user_avatar} />
+                                  <AvatarFallback>{title.user_name[0]}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm">{title.user_name}</span>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <span className="font-semibold text-success">
+                                {formatCurrency(title.amount)}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <Button
+                                variant="payment"
+                                size="sm"
+                                onClick={() => handleSinglePayment(title)}
+                              >
+                                <CreditCard className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Cards */}
+                  <div className="lg:hidden space-y-4 p-4">
                     {paginatedTitles.map((title) => (
-                      <tr key={title.id} className="border-b hover:bg-muted/20 transition-colors">
-                        <td className="p-4">
-                          <Checkbox
-                            checked={selectedTitles.has(title.id)}
-                            onCheckedChange={(checked) => handleSelectTitle(title.id, checked as boolean)}
-                          />
-                        </td>
-                        <td className="p-4 text-sm">{formatDate(title.emission_date)}</td>
-                        <td className="p-4 text-sm">{formatDate(title.due_date)}</td>
-                        <td className="p-4">
-                          <Badge variant="outline">{title.document}</Badge>
-                        </td>
-                        <td className="p-4 text-sm">{title.type}</td>
-                        <td className="p-4 text-sm font-mono">{title.order}</td>
-                        <td className="p-4 text-sm font-medium">{title.freelancer_name}</td>
-                        <td className="p-4 max-w-48">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="text-sm truncate text-left">
+                      <Card key={title.id} className="shadow-sm">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                checked={selectedTitles.has(title.id)}
+                                onCheckedChange={(checked) => handleSelectTitle(title.id, checked as boolean)}
+                              />
+                              <Badge variant="outline">{title.document}</Badge>
+                            </div>
+                            <Button
+                              variant="payment"
+                              size="sm"
+                              onClick={() => handleSinglePayment(title)}
+                              disabled={title.amount <= 0}
+                            >
+                              <CreditCard className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-muted-foreground">Freelancer:</span>
+                              <span className="text-sm font-medium">{title.freelancer_name}</span>
+                            </div>
+                            
+                            <div className="flex justify-between">
+                              <span className="text-sm text-muted-foreground">Valor:</span>
+                              <span className="text-sm font-semibold text-success">
+                                {formatCurrency(title.amount)}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between">
+                              <span className="text-sm text-muted-foreground">Vencimento:</span>
+                              <span className="text-sm">{formatDate(title.due_date)}</span>
+                            </div>
+
+                            <div className="flex justify-between">
+                              <span className="text-sm text-muted-foreground">Tipo:</span>
+                              <span className="text-sm">{title.type}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2 mt-3">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={title.user_avatar} />
+                                <AvatarFallback className="text-xs">{title.user_name[0]}</AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs text-muted-foreground">{title.user_name}</span>
+                            </div>
+
+                            {title.observations && (
+                              <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
                                 {title.observations}
                               </div>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-sm">
-                              <p>{title.observations}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={title.user_avatar} />
-                              <AvatarFallback>{title.user_name[0]}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm">{title.user_name}</span>
+                            )}
                           </div>
-                        </td>
-                        <td className="p-4">
-                          <span className="font-semibold text-success">
-                            {formatCurrency(title.amount)}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <Button
-                            variant="payment"
-                            size="sm"
-                            onClick={() => handleSinglePayment(title)}
-                          >
-                            <CreditCard className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
+                        </CardContent>
+                      </Card>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-              {/* Mobile Cards */}
-              <div className="lg:hidden space-y-4 p-4">
-                {paginatedTitles.map((title) => (
-                  <Card key={title.id} className="shadow-sm">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            checked={selectedTitles.has(title.id)}
-                            onCheckedChange={(checked) => handleSelectTitle(title.id, checked as boolean)}
-                          />
-                          <Badge variant="outline">{title.document}</Badge>
-                        </div>
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <Card className="shadow-card">
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Página {currentPage} de {totalPages} ({filteredTitles.length} títulos)
+                      </span>
+                      <div className="flex gap-2">
                         <Button
-                          variant="payment"
+                          variant="outline"
                           size="sm"
-                          onClick={() => handleSinglePayment(title)}
-                          disabled={title.amount <= 0}
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
                         >
-                          <CreditCard className="h-4 w-4" />
+                          Anterior
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          Próxima
                         </Button>
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Freelancer:</span>
-                          <span className="text-sm font-medium">{title.freelancer_name}</span>
-                        </div>
-                        
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Valor:</span>
-                          <span className="text-sm font-semibold text-success">
-                            {formatCurrency(title.amount)}
-                          </span>
-                        </div>
+            {/* Tab 2: Baixas Solicitadas */}
+            <TabsContent value="requests" className="space-y-6">
+              {/* Filtros para Baixas Solicitadas */}
+              <Card className="shadow-card animate-fade-in">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Search className="h-5 w-5 text-primary" />
+                    Filtros
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Status</label>
+                      <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos os status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Todos os status</SelectItem>
+                          <SelectItem value="Processado">Processado</SelectItem>
+                          <SelectItem value="Em processamento">Em processamento</SelectItem>
+                          <SelectItem value="Erro">Erro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Vencimento:</span>
-                          <span className="text-sm">{formatDate(title.due_date)}</span>
-                        </div>
-
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Tipo:</span>
-                          <span className="text-sm">{title.type}</span>
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-3">
-                          <Avatar className="h-6 w-6">
-                            <AvatarImage src={title.user_avatar} />
-                            <AvatarFallback className="text-xs">{title.user_name[0]}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs text-muted-foreground">{title.user_name}</span>
-                        </div>
-
-                        {title.observations && (
-                          <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
-                            {title.observations}
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Paginação */}
-          {totalPages > 1 && (
-            <Card className="shadow-card">
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Página {currentPage} de {totalPages} ({filteredTitles.length} títulos)
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Anterior
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Próxima
-                    </Button>
+                    <div className="flex items-end">
+                      <Button 
+                        onClick={handleRefresh}
+                        className="w-full"
+                        variant="outline"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Atualizar
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+
+              {/* Tabela de Baixas Solicitadas */}
+              <Card className="shadow-financial animate-fade-in">
+                <CardContent className="p-0">
+                  {/* Desktop Table */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50 border-b">
+                        <tr>
+                          <th className="p-4 text-left text-sm font-medium">ID do Título</th>
+                          <th className="p-4 text-left text-sm font-medium">Detalhes</th>
+                          <th className="p-4 text-left text-sm font-medium">Status</th>
+                          <th className="p-4 text-left text-sm font-medium">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredPaymentRequests.map((request) => (
+                          <tr key={request.id} className="border-b hover:bg-muted/20 transition-colors">
+                            <td className="p-4">
+                              <Badge variant="outline">{request.title_id}</Badge>
+                            </td>
+                            <td className="p-4 text-sm max-w-xs">
+                              <div className="truncate">{request.details}</div>
+                            </td>
+                            <td className="p-4">
+                              <Badge variant={getStatusBadgeVariant(request.status)}>
+                                {request.status}
+                              </Badge>
+                            </td>
+                            <td className="p-4">
+                              {request.status === 'Erro' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleReprocess(request.id)}
+                                >
+                                  <RotateCcw className="h-4 w-4 mr-1" />
+                                  Reprocessar
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Cards */}
+                  <div className="lg:hidden space-y-4 p-4">
+                    {filteredPaymentRequests.map((request) => (
+                      <Card key={request.id} className="shadow-sm">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <Badge variant="outline">{request.title_id}</Badge>
+                            <Badge variant={getStatusBadgeVariant(request.status)}>
+                              {request.status}
+                            </Badge>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div>
+                              <span className="text-sm text-muted-foreground">Detalhes:</span>
+                              <div className="text-sm mt-1">{request.details}</div>
+                            </div>
+                            
+                            {request.status === 'Erro' && (
+                              <div className="mt-3">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleReprocess(request.id)}
+                                  className="w-full"
+                                >
+                                  <RotateCcw className="h-4 w-4 mr-1" />
+                                  Reprocessar Baixa
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Modal de Baixa */}
-        <Dialog open={paymentModal.isOpen} onOpenChange={(open) => setPaymentModal(prev => ({ ...prev, isOpen: open }))}>
+        <Dialog open={paymentModal.isOpen} onOpenChange={(open) => {
+          if (!open) {
+            setSelectedBank('');
+            setPaymentDate('');
+          }
+          setPaymentModal(prev => ({ ...prev, isOpen: open }))
+        }}>
           <DialogContent className="animate-scale-in">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -663,7 +907,7 @@ const AccountsPayable = () => {
                     Confirmar baixa do título <strong>{paymentModal.title?.document}</strong> de{' '}
                     <strong>{paymentModal.title?.freelancer_name}</strong>?
                     <div className="mt-2 p-3 bg-muted/50 rounded">
-    <div className="text-sm text-muted-foreground mb-1">Total:</div>
+                      <div className="text-sm text-muted-foreground mb-1">Total:</div>
                       <div className="text-lg font-semibold text-success">
                         {paymentModal.title && formatCurrency(paymentModal.title.amount)}
                       </div>
@@ -671,25 +915,63 @@ const AccountsPayable = () => {
                   </>
                 ) : (
                  <>
-  Você está prestes a dar baixa em <strong>{paymentModal.selectedCount} títulos</strong>.
-  <div className="mt-2 p-3 bg-muted/50 rounded">
-    <div className="text-sm text-muted-foreground mb-1">Total:</div>
-    <div className="text-lg font-semibold text-success">
-      {formatCurrency(selectedTotal)}
-    </div>
-  </div>
-</>
+                  Você está prestes a dar baixa em <strong>{paymentModal.selectedCount} títulos</strong>.
+                  <div className="mt-2 p-3 bg-muted/50 rounded">
+                    <div className="text-sm text-muted-foreground mb-1">Total:</div>
+                    <div className="text-lg font-semibold text-success">
+                      {formatCurrency(selectedTotal)}
+                    </div>
+                  </div>
+                </>
                 )}
               </DialogDescription>
             </DialogHeader>
+            
+            {/* Payment Form Fields */}
+            <div className="space-y-4 py-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Banco *</label>
+                <Select value={selectedBank} onValueChange={setSelectedBank}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um banco" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {banks.map(bank => (
+                      <SelectItem key={bank.id} value={bank.id}>
+                        {bank.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Data de Pagamento *</label>
+                <Input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
             <DialogFooter>
               <Button 
                 variant="outline" 
-                onClick={() => setPaymentModal(prev => ({ ...prev, isOpen: false }))}
+                onClick={() => {
+                  setSelectedBank('');
+                  setPaymentDate('');
+                  setPaymentModal(prev => ({ ...prev, isOpen: false }));
+                }}
               >
                 Cancelar
               </Button>
-              <Button variant="payment" onClick={confirmPayment}>
+              <Button 
+                variant="payment" 
+                onClick={confirmPayment}
+                disabled={!selectedBank || !paymentDate}
+              >
                 <CreditCard className="h-4 w-4 mr-2" />
                 Confirmar Baixa
               </Button>

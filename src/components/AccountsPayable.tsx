@@ -100,7 +100,7 @@ const AccountsPayable = () => {
   }>({ isOpen: false, type: 'single' });
 
   // Payment form state
-  const [selectedBank, setSelectedBank] = useState('1'); // Default to first bank
+  const [selectedBank, setSelectedBank] = useState(''); // No default selection
   const [paymentDate, setPaymentDate] = useState('');
 
   // Inicializar datas padrão (primeiro e último dia do mês atual)
@@ -334,10 +334,7 @@ const AccountsPayable = () => {
 
   setFilteredTitles(result);
   setCurrentPage(1);
-  toast({
-    title: 'Filtros aplicados',
-    description: `${result.length} títulos encontrados`,
-  });
+  // Removed toast notification as requested
 };
 
   const handleSelectAll = (checked: boolean) => {
@@ -374,7 +371,7 @@ const AccountsPayable = () => {
     });
   };
 
-  const confirmPayment = () => {
+  const confirmPayment = async () => {
     // Validate required fields
     if (!selectedBank || !paymentDate) {
       toast({
@@ -385,21 +382,52 @@ const AccountsPayable = () => {
       return;
     }
 
-    if (paymentModal.type === 'single') {
+    // Prepare payload for API
+    const titlesToProcess = paymentModal.type === 'single' 
+      ? [paymentModal.title!] 
+      : Array.from(selectedTitles).map(id => titles.find(t => t.id === id)!).filter(Boolean);
+
+    const payload = titlesToProcess.map(title => ({
+      id_titulo: title.id,
+      dt_payment: paymentDate,
+      account_code: selectedBank,
+      memo: title.observations || ""
+    }));
+
+    // Send to API (currently mocked)
+    console.log('Sending payment request:', payload);
+    
+    // Simulate API call
+    try {
+      // Here you would make the actual API call
+      // await fetch('/api/payments', { method: 'POST', body: JSON.stringify(payload) });
+      
+      if (paymentModal.type === 'single') {
+        toast({
+          title: "Baixa realizada",
+          description: `Título ${paymentModal.title?.document} pago com sucesso`,
+        });
+      } else {
+        toast({
+          title: "Baixas realizadas",
+          description: `${paymentModal.selectedCount} títulos pagos com sucesso`,
+        });
+        setSelectedTitles(new Set());
+      }
+
+      // Reload titles list (simulate API refresh)
+      handleFilter();
+      
+    } catch (error) {
       toast({
-        title: "Baixa realizada",
-        description: `Título ${paymentModal.title?.document} pago com sucesso`,
+        title: "Erro no processamento",
+        description: "Não foi possível processar o pagamento. Tente novamente.",
+        variant: "destructive"
       });
-    } else {
-      toast({
-        title: "Baixas realizadas",
-        description: `${paymentModal.selectedCount} títulos pagos com sucesso`,
-      });
-      setSelectedTitles(new Set());
     }
     
     // Reset form and close modal
-    setSelectedBank('1'); // Reset to first bank
+    setSelectedBank('');
     setPaymentDate('');
     setPaymentModal({ isOpen: false, type: 'single' });
   };
@@ -412,10 +440,15 @@ const AccountsPayable = () => {
     });
   };
 
-  const handleReprocess = (requestId: string) => {
-    const randomSuccess = Math.random() > 0.5;
-    
-    if (randomSuccess) {
+  const handleReprocess = async (requestId: string) => {
+    try {
+      // Send reprocess request to API (currently mocked)
+      console.log('Reprocessing payment request:', requestId);
+      
+      // Simulate API call
+      // await fetch(`/api/payments/reprocess/${requestId}`, { method: 'POST' });
+      
+      // Update status to Processado (simulate successful reprocessing)
       setPaymentRequests(prev => 
         prev.map(req => 
           req.id === requestId 
@@ -423,11 +456,16 @@ const AccountsPayable = () => {
             : req
         )
       );
+      
       toast({
         title: "Reprocessamento bem-sucedido",
         description: "A baixa foi reprocessada com sucesso",
       });
-    } else {
+      
+      // Auto-refresh the table
+      handleRefresh();
+      
+    } catch (error) {
       toast({
         title: "Erro no reprocessamento",
         description: "Não foi possível reprocessar a baixa. Tente novamente.",
@@ -903,7 +941,7 @@ const AccountsPayable = () => {
         {/* Modal de Baixa */}
         <Dialog open={paymentModal.isOpen} onOpenChange={(open) => {
           if (!open) {
-            setSelectedBank('1'); // Reset to first bank
+            setSelectedBank('');
             setPaymentDate('');
           }
           setPaymentModal(prev => ({ ...prev, isOpen: open }))
@@ -973,7 +1011,7 @@ const AccountsPayable = () => {
               <Button 
                 variant="outline" 
                 onClick={() => {
-                  setSelectedBank('1'); // Reset to first bank
+                  setSelectedBank('');
                   setPaymentDate('');
                   setPaymentModal(prev => ({ ...prev, isOpen: false }));
                 }}

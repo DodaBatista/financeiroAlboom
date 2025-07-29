@@ -188,9 +188,14 @@ const AccountsPayable = () => {
 
       const response = await callAPI('account_trans/paginate_apr', requestData);
 
-      setTitles(response || []);
-      setFilteredTitles(response || []);
-      setTotalTitles(response?.length || 0);
+      // Nova estrutura da API: [{ titulos: [...], count: 45 }]
+      const data = response?.[0];
+      const titulos = data?.titulos || [];
+      const totalCount = data?.count || 0;
+
+      setTitles(titulos);
+      setFilteredTitles(titulos);
+      setTotalTitles(totalCount); // Usar o count para paginação
     } catch (error) {
       toast({
         title: "Erro ao carregar títulos",

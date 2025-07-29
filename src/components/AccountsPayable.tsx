@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, CheckCircle, Clock, CreditCard, RefreshCw, RotateCcw, Search, Loader2, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, CreditCard, Loader2, RefreshCw, RotateCcw, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 
@@ -72,7 +72,7 @@ const AccountsPayable = () => {
   // Seleção e paginação
   const [selectedTitles, setSelectedTitles] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [totalTitles, setTotalTitles] = useState(0);
   
   const [filteredTitles, setFilteredTitles] = useState<PayableTitle[]>([]);

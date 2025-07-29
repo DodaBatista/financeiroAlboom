@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertCircle, CheckCircle, Clock, CreditCard, RefreshCw, RotateCcw, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+const API_BASE_URL = 'https://fluxo.riapp.app/webhook/finance';
+
 interface PayableTitle {
   id: string;
   emission_date: string;
@@ -48,29 +50,9 @@ interface PaymentRequest {
 const AccountsPayable = () => {
   const { toast } = useToast();
   const [titles, setTitles] = useState<PayableTitle[]>([]);
-  const [freelancers] = useState<Freelancer[]>([
-    { id: '1', name: 'João Silva' },
-    { id: '2', name: 'Maria Santos' },
-    { id: '3', name: 'Pedro Costa' },
-    { id: '4', name: 'Ana Oliveira' },
-  ]);
-
-  // Mock data for banks and payment requests
-  const [banks] = useState<Bank[]>([
-    { id: '1', label: 'Banco do Brasil' },
-    { id: '2', label: 'Caixa' },
-    { id: '3', label: 'Bradesco' },
-    { id: '4', label: 'Itaú' },
-  ]);
-
-  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([
-    { id: '1', title_id: '1', details: 'Desenvolvimento de sistema de gestão', status: 'Processado' },
-    { id: '2', title_id: '2', details: 'Consultoria em arquitetura', status: 'Em processamento' },
-    { id: '3', title_id: '3', details: 'Criação de identidade visual', status: 'Erro' },
-    { id: '4', title_id: '4', details: 'Campanha de marketing digital', status: 'Processado' },
-    { id: '5', title_id: '5', details: 'Implementação de API REST', status: 'Em processamento' },
-    { id: '6', title_id: '6', details: 'Dashboard analítico', status: 'Erro' },
-  ]);
+  const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   
   // Filtros
   const [startDate, setStartDate] = useState('');
@@ -81,9 +63,11 @@ const AccountsPayable = () => {
   // Seleção e paginação
   const [selectedTitles, setSelectedTitles] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(15);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [totalTitles, setTotalTitles] = useState(0);
   
   const [filteredTitles, setFilteredTitles] = useState<PayableTitle[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState('titles');
@@ -103,6 +87,97 @@ const AccountsPayable = () => {
   const [selectedBank, setSelectedBank] = useState(''); // No default selection
   const [paymentDate, setPaymentDate] = useState('');
 
+  // API Functions
+  const callAPI = async (endpoint: string, data: any = {}) => {
+    try {
+      const response = await fetch(API_BASE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          endpoint,
+          ...data
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`API call failed for ${endpoint}:`, error);
+      throw error;
+    }
+  };
+
+  const fetchBanks = async () => {
+    try {
+      const response = await callAPI('banks/paginate');
+      setBanks(response.data || []);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar bancos",
+        description: "Não foi possível carregar a lista de bancos.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fetchFreelancers = async () => {
+    try {
+      const response = await callAPI('users/paginate');
+      setFreelancers(response.data || []);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar freelancers",
+        description: "Não foi possível carregar a lista de freelancers.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fetchTitles = async () => {
+    if (!startDate || !endDate) return;
+    
+    setLoading(true);
+    try {
+      const response = await callAPI('account_trans/paginate_apr', {
+        pageNumber: currentPage,
+        pageSize: itemsPerPage,
+        start_date: startDate,
+        end_date: endDate,
+        customer_id: selectedFreelancer || undefined
+      });
+
+      setTitles(response.data || []);
+      setFilteredTitles(response.data || []);
+      setTotalTitles(response.total || 0);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar títulos",
+        description: "Não foi possível carregar a lista de títulos.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPaymentRequests = async () => {
+    try {
+      const response = await callAPI('processados');
+      setPaymentRequests(response.data || []);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar baixas solicitadas",
+        description: "Não foi possível carregar a lista de baixas solicitadas.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Inicializar datas padrão (primeiro e último dia do mês atual)
   useEffect(() => {
     const now = new Date();
@@ -113,230 +188,41 @@ const AccountsPayable = () => {
     setEndDate(lastDay.toISOString().split('T')[0]);
   }, []);
 
-  // Mock data - expanded for better testing
+  // Load initial data
   useEffect(() => {
-    const mockTitles: PayableTitle[] = [
-  {
-    id: '1',
-    emission_date: '2025-07-01',
-    due_date: '2025-07-10',
-    document: 'NF-001',
-    type: 'Serviço',
-    order: 'PED-2025-001',
-    freelancer_name: 'João Silva',
-    freelancer_id: '1',
-    observations: 'Desenvolvimento de sistema de gestão financeira com interface responsiva e funcionalidades completas de relatórios',
-    user_name: 'Admin',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
-    amount: 2500.00,
-    status: 'pending'
-  },
-  {
-    id: '2',
-    emission_date: '2025-07-03',
-    due_date: '2025-07-15',
-    document: 'NF-002',
-    type: 'Consultoria',
-    order: 'PED-2025-002',
-    freelancer_name: 'Maria Santos',
-    freelancer_id: '2',
-    observations: 'Consultoria em arquitetura de software',
-    user_name: 'Gerente',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=manager',
-    amount: 1800.00,
-    status: 'pending'
-  },
-  {
-    id: '3',
-    emission_date: '2025-07-05',
-    due_date: '2025-07-18',
-    document: 'NF-003',
-    type: 'Design',
-    order: 'PED-2025-003',
-    freelancer_name: 'Pedro Costa',
-    freelancer_id: '3',
-    observations: 'Criação de identidade visual completa',
-    user_name: 'Designer',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=designer',
-    amount: 3200.00,
-    status: 'pending'
-  },
-  {
-    id: '4',
-    emission_date: '2025-07-07',
-    due_date: '2025-07-20',
-    document: 'NF-004',
-    type: 'Marketing',
-    order: 'PED-2025-004',
-    freelancer_name: 'Ana Oliveira',
-    freelancer_id: '4',
-    observations: 'Campanha de marketing digital',
-    user_name: 'Marketing',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=marketing',
-    amount: 0,
-    status: 'pending'
-  },
-  {
-    id: '5',
-    emission_date: '2025-07-09',
-    due_date: '2025-07-22',
-    document: 'REC-005',
-    type: 'Recibo',
-    order: 'PED-2025-005',
-    freelancer_name: 'João Silva',
-    freelancer_id: '1',
-    observations: 'Implementação de API REST com autenticação JWT',
-    user_name: 'Tech Lead',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=tech',
-    amount: 1950.50,
-    status: 'pending'
-  },
-  {
-    id: '6',
-    emission_date: '2025-07-11',
-    due_date: '2025-07-25',
-    document: 'NF-006',
-    type: 'Desenvolvimento',
-    order: 'PED-2025-006',
-    freelancer_name: 'Maria Santos',
-    freelancer_id: '2',
-    observations: 'Criação de dashboard analítico com gráficos interativos e relatórios em tempo real',
-    user_name: 'Product Owner',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=po',
-    amount: 2750.25,
-    status: 'pending'
-  },
-  {
-    id: '7',
-    emission_date: '2025-07-13',
-    due_date: '2025-07-27',
-    document: 'REC-007',
-    type: 'Consultoria',
-    order: 'PED-2025-007',
-    freelancer_name: 'Pedro Costa',
-    freelancer_id: '3',
-    observations: 'Auditoria de código e otimização de performance',
-    user_name: 'CTO',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=cto',
-    amount: 3100.00,
-    status: 'pending'
-  },
-  {
-    id: '8',
-    emission_date: '2025-07-16',
-    due_date: '2025-07-30',
-    document: 'NF-008',
-    type: 'UX/UI',
-    order: 'PED-2025-008',
-    freelancer_name: 'Ana Oliveira',
-    freelancer_id: '4',
-    observations: 'Redesign completo da interface mobile',
-    user_name: 'Design Lead',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=design',
-    amount: 2200.75,
-    status: 'pending'
-  },
-  {
-    id: '9',
-    emission_date: '2025-07-18',
-    due_date: '2025-08-01',
-    document: 'REC-009',
-    type: 'DevOps',
-    order: 'PED-2025-009',
-    freelancer_name: 'João Silva',
-    freelancer_id: '1',
-    observations: 'Configuração de pipeline CI/CD',
-    user_name: 'DevOps Lead',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=devops',
-    amount: 1800.90,
-    status: 'pending'
-  },
-  {
-    id: '10',
-    emission_date: '2025-07-21',
-    due_date: '2025-08-04',
-    document: 'NF-010',
-    type: 'Backend',
-    order: 'PED-2025-010',
-    freelancer_name: 'Maria Santos',
-    freelancer_id: '2',
-    observations: 'Desenvolvimento de microserviços',
-    user_name: 'Backend Lead',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=backend',
-    amount: 0,
-    status: 'pending'
-  },
-  {
-    id: '11',
-    emission_date: '2025-07-24',
-    due_date: '2025-08-07',
-    document: 'REC-011',
-    type: 'QA',
-    order: 'PED-2025-011',
-    freelancer_name: 'Pedro Costa',
-    freelancer_id: '3',
-    observations: 'Testes automatizados e manuais',
-    user_name: 'QA Lead',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=qa',
-    amount: 1650.40,
-    status: 'pending'
-  },
-  {
-    id: '12',
-    emission_date: '2025-07-28',
-    due_date: '2025-08-10',
-    document: 'NF-012',
-    type: 'Segurança',
-    order: 'PED-2025-012',
-    freelancer_name: 'Ana Oliveira',
-    freelancer_id: '4',
-    observations: 'Implementação de medidas de segurança avançadas',
-    user_name: 'Security Lead',
-    user_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=security',
-    amount: 2850.60,
-    status: 'pending'
-  }
-];
-    setTitles(mockTitles);
+    fetchBanks();
+    fetchFreelancers();
   }, []);
 
+  // Load titles when dates or filters change
   useEffect(() => {
-  if (!titles.length || !startDate || !endDate) return;
-  if (filteredTitles.length === 0) {
-    handleFilter(); // só filtra na primeira carga
-  }
-}, [titles]);
+    if (startDate && endDate) {
+      fetchTitles();
+    }
+  }, [startDate, endDate, currentPage, itemsPerPage, selectedFreelancer]);
+
+  // Load payment requests when tab changes
+  useEffect(() => {
+    if (activeTab === 'requests') {
+      fetchPaymentRequests();
+    }
+  }, [activeTab]);
+
 
   // Filtros
   const filteredFreelancers = freelancers.filter(f => 
     f.name.toLowerCase().includes(freelancerSearch.toLowerCase())
   );
 
-  // Paginação
-  const totalPages = Math.ceil(filteredTitles.length / itemsPerPage);
-  const paginatedTitles = filteredTitles.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Paginação usando dados da API
+  const totalPages = Math.ceil(totalTitles / itemsPerPage);
+  const paginatedTitles = filteredTitles;
 
   const handleFilter = () => {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  const result = titles.filter(title => {
-    const dueDate = new Date(title.due_date);
-    const dateMatch = dueDate >= start && dueDate <= end;
-    const freelancerMatch =
-      !selectedFreelancer || selectedFreelancer === 'all' || title.freelancer_id === selectedFreelancer;
-
-    return dateMatch && freelancerMatch;
-  });
-
-  setFilteredTitles(result);
-  setCurrentPage(1);
-  setSelectedTitles(new Set()); // Clear selected titles when filtering
-  // Removed toast notification as requested
-};
+    setCurrentPage(1);
+    setSelectedTitles(new Set()); // Clear selected titles when filtering
+    fetchTitles(); // Fetch from API with current filters
+  };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -395,13 +281,8 @@ const AccountsPayable = () => {
       memo: title.observations || ""
     }));
 
-    // Send to API (currently mocked)
-    console.log('Sending payment request:', payload);
-    
-    // Simulate API call
     try {
-      // Here you would make the actual API call
-      // await fetch('/api/payments', { method: 'POST', body: JSON.stringify(payload) });
+      await callAPI('account_trans/clear_apr', { payments: payload });
       
       if (paymentModal.type === 'single') {
         toast({
@@ -416,8 +297,8 @@ const AccountsPayable = () => {
         setSelectedTitles(new Set());
       }
 
-      // Reload titles list (simulate API refresh)
-      handleFilter();
+      // Reload titles list from API
+      fetchTitles();
       
     } catch (error) {
       toast({
@@ -435,6 +316,7 @@ const AccountsPayable = () => {
 
   // Payment requests functions
   const handleRefresh = () => {
+    fetchPaymentRequests();
     toast({
       title: "Dados atualizados",
       description: "Lista de baixas solicitadas foi recarregada",
@@ -443,20 +325,8 @@ const AccountsPayable = () => {
 
   const handleReprocess = async (requestId: string) => {
     try {
-      // Send reprocess request to API (currently mocked)
-      console.log('Reprocessing payment request:', requestId);
-      
-      // Simulate API call
-      // await fetch(`/api/payments/reprocess/${requestId}`, { method: 'POST' });
-      
-      // Update status to Processado (simulate successful reprocessing)
-      setPaymentRequests(prev => 
-        prev.map(req => 
-          req.id === requestId 
-            ? { ...req, status: 'Processado' }
-            : req
-        )
-      );
+      // Send reprocess request to API
+      await callAPI('reprocess', { requestId });
       
       toast({
         title: "Reprocessamento bem-sucedido",
@@ -464,7 +334,7 @@ const AccountsPayable = () => {
       });
       
       // Auto-refresh the table
-      handleRefresh();
+      fetchPaymentRequests();
       
     } catch (error) {
       toast({
@@ -775,35 +645,56 @@ const AccountsPayable = () => {
               </Card>
 
               {/* Paginação */}
-              {totalPages > 1 && (
-                <Card className="shadow-card">
-                  <CardContent className="py-4">
-                    <div className="flex items-center justify-between">
+              <Card className="shadow-card">
+                <CardContent className="py-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
                       <span className="text-sm text-muted-foreground">
-                        Página {currentPage} de {totalPages} ({filteredTitles.length} títulos)
+                        Página {currentPage} de {totalPages} ({totalTitles} títulos)
                       </span>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                          disabled={currentPage === 1}
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Itens por página:</span>
+                        <Select 
+                          value={itemsPerPage.toString()} 
+                          onValueChange={(value) => {
+                            setItemsPerPage(Number(value));
+                            setCurrentPage(1);
+                          }}
                         >
-                          Anterior
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                          disabled={currentPage === totalPages}
-                        >
-                          Próxima
-                        </Button>
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1 || loading}
+                      >
+                        Anterior
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages || loading}
+                      >
+                        Próxima
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* Tab 2: Baixas Solicitadas */}

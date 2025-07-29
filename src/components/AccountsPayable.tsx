@@ -174,8 +174,8 @@ const AccountsPayable = () => {
         end_date: endDate
       };
 
-      // Only add customer_id if a specific freelancer is selected (not "all")
-      if (selectedFreelancer && selectedFreelancer !== "all") {
+      // Only add customer_id if a specific freelancer is selected
+      if (selectedFreelancer) {
         requestData.customer_id = selectedFreelancer;
       }
 
@@ -364,8 +364,26 @@ const AccountsPayable = () => {
     if (!reprocessModal.titleId) return;
 
     try {
-      // Send reprocess request to API
-      await callAPI('reprocess', { id_titulo: reprocessModal.titleId });
+      // Find the payment request data
+      const request = paymentRequests.find(req => req.id_titulo === reprocessModal.titleId);
+      if (!request) {
+        toast({
+          title: "Erro",
+          description: "Dados do título não encontrados",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Send to the same endpoint as payment clearing with array format
+      const payload = [{
+        id_titulo: request.id_titulo,
+        account_code: request.account_code,
+        dt_payment: request.dt_payment,
+        memo: request.memo
+      }];
+
+      await callAPI('account_trans/clear_apr', payload);
       
       toast({
         title: "Reprocessamento bem-sucedido",
@@ -494,7 +512,7 @@ const AccountsPayable = () => {
                               className="mb-2"
                             />
                           </div>
-                          <SelectItem value="all">Todos os freelancers</SelectItem>
+                          
                           {freelancerLoading ? (
                             <div className="flex items-center justify-center p-2">
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -572,8 +590,15 @@ const AccountsPayable = () => {
                           <th className="p-4 text-left text-sm font-medium">Ação</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {paginatedTitles.map((title) => (
+                       <tbody>
+                         {paginatedTitles.length === 0 ? (
+                           <tr>
+                             <td colSpan={11} className="p-8 text-center text-muted-foreground">
+                               Nenhum título encontrado com os filtros selecionados.
+                             </td>
+                           </tr>
+                         ) : (
+                           paginatedTitles.filter(title => title.id && title.amount && !isNaN(parseFloat(title.amount))).map((title) => (
                           <tr key={title.id} className="border-b hover:bg-muted/20 transition-colors">
                             <td className="p-4">
                               <Checkbox
@@ -626,15 +651,20 @@ const AccountsPayable = () => {
                                 <CreditCard className="h-4 w-4" />
                               </Button>
                             </td>
-                          </tr>
-                        ))}
-                      </tbody>
+                           </tr>
+                         )))}
+                       </tbody>
                     </table>
                   </div>
 
-                  {/* Mobile Cards */}
-                  <div className={`lg:hidden space-y-4 p-4 ${loading ? 'opacity-50' : ''}`}>
-                    {paginatedTitles.map((title) => (
+                   {/* Mobile Cards */}
+                   <div className={`lg:hidden space-y-4 p-4 ${loading ? 'opacity-50' : ''}`}>
+                     {paginatedTitles.length === 0 ? (
+                       <div className="text-center p-8 text-muted-foreground">
+                         Nenhum título encontrado com os filtros selecionados.
+                       </div>
+                     ) : (
+                       paginatedTitles.filter(title => title.id && title.amount && !isNaN(parseFloat(title.amount))).map((title) => (
                       <Card key={title.id} className="shadow-sm">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-3">
@@ -694,10 +724,10 @@ const AccountsPayable = () => {
                               </div>
                             )}
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                         </CardContent>
+                       </Card>
+                     )))}
+                   </div>
                 </CardContent>
               </Card>
 

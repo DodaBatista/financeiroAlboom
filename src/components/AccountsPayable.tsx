@@ -101,6 +101,9 @@ const AccountsPayable = () => {
     titleId?: string;
   }>({ isOpen: false });
 
+  // Estado para pesquisa de banco no modal
+  const [bankSearch, setBankSearch] = useState('');
+
   // Payment form state
   const [selectedBank, setSelectedBank] = useState(''); // No default selection
   const [paymentDate, setPaymentDate] = useState('');
@@ -461,6 +464,11 @@ const AccountsPayable = () => {
   const selectedTotal = Array.from(selectedTitles)
   .map(id => titles.find(t => t.id === id)?.amount || "0")
   .reduce((acc, val) => acc + parseFloat(val), 0);
+
+  // Filtrar bancos localmente com base na pesquisa
+  const filteredBanks = banks.filter(bank =>
+    bank.name.toLowerCase().includes(bankSearch.toLowerCase())
+  );
 
   return (
     <TooltipProvider>
@@ -1015,6 +1023,7 @@ const AccountsPayable = () => {
           if (!open) {
             setSelectedBank('');
             setPaymentDate('');
+            setBankSearch(''); // Limpar pesquisa do banco ao fechar modal
           }
           setPaymentModal(prev => ({ ...prev, isOpen: open }))
         }}>
@@ -1058,12 +1067,36 @@ const AccountsPayable = () => {
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um banco" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {banks.map(bank => (
-                       <SelectItem key={bank.id} value={bank.account_code}>
-                         {bank.name}
-                       </SelectItem>
-                    ))}
+                  <SelectContent autoFocus={false}>
+                    <div className="p-2 sticky top-0 bg-popover border-b">
+                      <Input
+                        placeholder="Digite para pesquisar..."
+                        value={bankSearch}
+                        onChange={(e) => setBankSearch(e.target.value)}
+                        className="w-full"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          // Prevent arrow keys from navigating to list items
+                          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                            e.preventDefault();
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    
+                    {filteredBanks.length > 0 ? (
+                      filteredBanks.map(bank => (
+                        <SelectItem key={bank.id} value={bank.account_code}>
+                          {bank.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-muted-foreground text-sm">
+                        Nenhum banco encontrado
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

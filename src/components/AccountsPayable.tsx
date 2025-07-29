@@ -334,6 +334,7 @@ const AccountsPayable = () => {
 
   setFilteredTitles(result);
   setCurrentPage(1);
+  setSelectedTitles(new Set()); // Clear selected titles when filtering
   // Removed toast notification as requested
 };
 

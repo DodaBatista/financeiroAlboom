@@ -188,10 +188,10 @@ const AccountsPayable = () => {
 
       const response = await callAPI('account_trans/paginate_apr', requestData);
 
-      // Nova estrutura da API: [{ titulos: [...], count: 45 }]
+      // Nova estrutura da API: [{ titulos: [...], count: "45" }]
       const data = response?.[0];
       const titulos = data?.titulos || [];
-      const totalCount = data?.count || 0;
+      const totalCount = parseInt(data?.count || '0', 10); // Converter string para número
 
       setTitles(titulos);
       setFilteredTitles(titulos);

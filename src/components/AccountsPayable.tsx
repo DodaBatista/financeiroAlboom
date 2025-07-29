@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, CheckCircle, Clock, CreditCard, RefreshCw, RotateCcw, Search } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, CreditCard, RefreshCw, RotateCcw, Search, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useDebounce } from 'use-debounce';
 
 const API_BASE_URL = 'https://fluxo.riapp.app/webhook/finance';
 
@@ -64,6 +65,8 @@ const AccountsPayable = () => {
   const [endDate, setEndDate] = useState('');
   const [selectedFreelancer, setSelectedFreelancer] = useState('');
   const [freelancerSearch, setFreelancerSearch] = useState('');
+  const [debouncedFreelancerSearch] = useDebounce(freelancerSearch, 500);
+  const [freelancerLoading, setFreelancerLoading] = useState(false);
 
   // Seleção e paginação
   const [selectedTitles, setSelectedTitles] = useState<Set<string>>(new Set());
@@ -87,6 +90,11 @@ const AccountsPayable = () => {
     title?: PayableTitle;
     selectedCount?: number;
   }>({ isOpen: false, type: 'single' });
+  
+  const [reprocessModal, setReprocessModal] = useState<{
+    isOpen: boolean;
+    titleId?: string;
+  }>({ isOpen: false });
 
   // Payment form state
   const [selectedBank, setSelectedBank] = useState(''); // No default selection
@@ -132,9 +140,15 @@ const AccountsPayable = () => {
     }
   };
 
-  const fetchFreelancers = async () => {
+  const fetchFreelancers = async (searchTerm?: string) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setFreelancers([]);
+      return;
+    }
+    
+    setFreelancerLoading(true);
     try {
-      const response = await callAPI('users/paginate');
+      const response = await callAPI('users/paginate', { searchTerm });
       setFreelancers(response || []);
     } catch (error) {
       toast({
@@ -142,6 +156,8 @@ const AccountsPayable = () => {
         description: "Não foi possível carregar a lista de freelancers.",
         variant: "destructive"
       });
+    } finally {
+      setFreelancerLoading(false);
     }
   };
 
@@ -204,8 +220,12 @@ const AccountsPayable = () => {
   // Load initial data
   useEffect(() => {
     fetchBanks();
-    fetchFreelancers();
   }, []);
+
+  // Debounced freelancer search
+  useEffect(() => {
+    fetchFreelancers(debouncedFreelancerSearch);
+  }, [debouncedFreelancerSearch]);
 
   // Load titles when dates or filters change
   useEffect(() => {
@@ -330,20 +350,18 @@ const AccountsPayable = () => {
   // Payment requests functions
   const handleRefresh = () => {
     fetchPaymentRequests();
-    toast({
-      title: "Dados atualizados",
-      description: "Lista de baixas solicitadas foi recarregada",
-    });
   };
 
-  const handleReprocess = async (titleId: string) => {
-    // Show confirmation dialog first
-    const confirmed = window.confirm('Deseja realmente reprocessar esta baixa?');
-    if (!confirmed) return;
+  const handleReprocess = (titleId: string) => {
+    setReprocessModal({ isOpen: true, titleId });
+  };
+
+  const confirmReprocess = async () => {
+    if (!reprocessModal.titleId) return;
 
     try {
       // Send reprocess request to API
-      await callAPI('reprocess', { id_titulo: titleId });
+      await callAPI('reprocess', { id_titulo: reprocessModal.titleId });
       
       toast({
         title: "Reprocessamento bem-sucedido",
@@ -360,6 +378,8 @@ const AccountsPayable = () => {
         variant: "destructive"
       });
     }
+    
+    setReprocessModal({ isOpen: false });
   };
 
   // Filter payment requests
@@ -464,18 +484,24 @@ const AccountsPayable = () => {
                         <SelectContent>
                           <div className="p-2">
                             <Input
-                              placeholder="Pesquisar freelancer..."
+                              placeholder="Digite ao menos 2 caracteres..."
                               value={freelancerSearch}
                               onChange={(e) => setFreelancerSearch(e.target.value)}
                               className="mb-2"
                             />
                           </div>
                           <SelectItem value="all">Todos os freelancers</SelectItem>
-                          {filteredFreelancers.map(freelancer => (
-                            <SelectItem key={freelancer.id} value={freelancer.id}>
-                              {freelancer.name} {freelancer.lastname}
-                            </SelectItem>
-                          ))}
+                          {freelancerLoading ? (
+                            <div className="flex items-center justify-center p-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            </div>
+                          ) : (
+                            freelancers.map(freelancer => (
+                              <SelectItem key={freelancer.id} value={freelancer.id}>
+                                {freelancer.name} {freelancer.lastname}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -513,8 +539,14 @@ const AccountsPayable = () => {
               {/* Tabela / Cards */}
               <Card className="shadow-financial animate-fade-in">
                 <CardContent className="p-0">
+                  {loading && (
+                    <div className="flex items-center justify-center p-8">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Carregando títulos...</span>
+                    </div>
+                  )}
                   {/* Desktop Table */}
-                  <div className="hidden lg:block overflow-x-auto">
+                  <div className={`hidden lg:block overflow-x-auto ${loading ? 'opacity-50' : ''}`}>
                     <table className="w-full">
                       <thead className="bg-muted/50 border-b">
                         <tr>
@@ -597,7 +629,7 @@ const AccountsPayable = () => {
                   </div>
 
                   {/* Mobile Cards */}
-                  <div className="lg:hidden space-y-4 p-4">
+                  <div className={`lg:hidden space-y-4 p-4 ${loading ? 'opacity-50' : ''}`}>
                     {paginatedTitles.map((title) => (
                       <Card key={title.id} className="shadow-sm">
                         <CardContent className="p-4">
@@ -944,6 +976,39 @@ const AccountsPayable = () => {
                 disabled={!selectedBank || !paymentDate}
               >
                 <CreditCard className="h-4 w-4 mr-2" />
+                Confirmar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Reprocessamento */}
+        <Dialog open={reprocessModal.isOpen} onOpenChange={(open) => {
+          setReprocessModal(prev => ({ ...prev, isOpen: open }))
+        }}>
+          <DialogContent className="animate-scale-in">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <RotateCcw className="h-5 w-5 text-primary" />
+                Deseja reprocessar esta baixa?
+              </DialogTitle>
+              <DialogDescription>
+                Essa ação tentará reprocessar a baixa do título selecionado.
+              </DialogDescription>
+            </DialogHeader>
+
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setReprocessModal({ isOpen: false })}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                variant="default" 
+                onClick={confirmReprocess}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
                 Confirmar
               </Button>
             </DialogFooter>

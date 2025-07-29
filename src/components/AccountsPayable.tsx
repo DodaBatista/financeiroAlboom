@@ -89,7 +89,7 @@ const AccountsPayable = () => {
   const [activeTab, setActiveTab] = useState('titles');
 
   // Payment requests filters
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('default');
 
   // Modais
   const [paymentModal, setPaymentModal] = useState<{
@@ -100,7 +100,7 @@ const AccountsPayable = () => {
   }>({ isOpen: false, type: 'single' });
 
   // Payment form state
-  const [selectedBank, setSelectedBank] = useState('');
+  const [selectedBank, setSelectedBank] = useState('1'); // Default to first bank
   const [paymentDate, setPaymentDate] = useState('');
 
   // Inicializar datas padrão (primeiro e último dia do mês atual)
@@ -399,7 +399,7 @@ const AccountsPayable = () => {
     }
     
     // Reset form and close modal
-    setSelectedBank('');
+    setSelectedBank('1'); // Reset to first bank
     setPaymentDate('');
     setPaymentModal({ isOpen: false, type: 'single' });
   };
@@ -903,7 +903,7 @@ const AccountsPayable = () => {
         {/* Modal de Baixa */}
         <Dialog open={paymentModal.isOpen} onOpenChange={(open) => {
           if (!open) {
-            setSelectedBank('');
+            setSelectedBank('1'); // Reset to first bank
             setPaymentDate('');
           }
           setPaymentModal(prev => ({ ...prev, isOpen: open }))
@@ -973,7 +973,7 @@ const AccountsPayable = () => {
               <Button 
                 variant="outline" 
                 onClick={() => {
-                  setSelectedBank('');
+                  setSelectedBank('1'); // Reset to first bank
                   setPaymentDate('');
                   setPaymentModal(prev => ({ ...prev, isOpen: false }));
                 }}

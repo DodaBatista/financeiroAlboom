@@ -503,13 +503,15 @@ const AccountsPayable = () => {
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um freelancer" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
                           <div className="p-2">
                             <Input
                               placeholder="Digite ao menos 2 caracteres..."
                               value={freelancerSearch}
                               onChange={(e) => setFreelancerSearch(e.target.value)}
                               className="mb-2"
+                              onKeyDown={(e) => e.stopPropagation()}
+                              autoFocus={false}
                             />
                           </div>
                           
@@ -591,14 +593,18 @@ const AccountsPayable = () => {
                         </tr>
                       </thead>
                        <tbody>
-                         {paginatedTitles.length === 0 && !loading ? (
-                           <tr>
-                             <td colSpan={11} className="p-8 text-center text-muted-foreground">
-                               Nenhum título encontrado com os filtros selecionados.
-                             </td>
-                           </tr>
-                         ) : (
-                           paginatedTitles.filter(title => title.id && title.amount && !isNaN(parseFloat(title.amount))).map((title) => (
+                         {(() => {
+                           const validTitles = paginatedTitles.filter(title => title.id && title.amount && !isNaN(parseFloat(title.amount)));
+                           if (validTitles.length === 0 && !loading) {
+                             return (
+                               <tr>
+                                 <td colSpan={11} className="p-8 text-center text-muted-foreground">
+                                   Nenhum título encontrado com os filtros selecionados.
+                                 </td>
+                               </tr>
+                             );
+                           }
+                           return validTitles.map((title) => (
                           <tr key={title.id} className="border-b hover:bg-muted/20 transition-colors">
                             <td className="p-4">
                               <Checkbox
@@ -652,19 +658,24 @@ const AccountsPayable = () => {
                               </Button>
                             </td>
                            </tr>
-                         )))}
-                       </tbody>
+                          ));
+                         })()}
+                        </tbody>
                     </table>
                   </div>
 
                    {/* Mobile Cards */}
                    <div className={`lg:hidden space-y-4 p-4 ${loading ? 'opacity-50' : ''}`}>
-                     {paginatedTitles.length === 0 && !loading ? (
-                       <div className="text-center p-8 text-muted-foreground">
-                         Nenhum título encontrado com os filtros selecionados.
-                       </div>
-                     ) : (
-                       paginatedTitles.filter(title => title.id && title.amount && !isNaN(parseFloat(title.amount))).map((title) => (
+                     {(() => {
+                       const validTitles = paginatedTitles.filter(title => title.id && title.amount && !isNaN(parseFloat(title.amount)));
+                       if (validTitles.length === 0 && !loading) {
+                         return (
+                           <div className="text-center p-8 text-muted-foreground">
+                             Nenhum título encontrado com os filtros selecionados.
+                           </div>
+                         );
+                       }
+                       return validTitles.map((title) => (
                       <Card key={title.id} className="shadow-sm">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-3">
@@ -726,7 +737,8 @@ const AccountsPayable = () => {
                           </div>
                          </CardContent>
                        </Card>
-                     )))}
+                      ));
+                     })()}
                    </div>
                 </CardContent>
               </Card>

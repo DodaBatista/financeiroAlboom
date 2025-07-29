@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { AlertCircle, CheckCircle, Clock, CreditCard, Loader2, RefreshCw, RotateCcw, Search, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 
 const API_BASE_URL = 'https://fluxo.riapp.app/webhook/finance';
@@ -68,6 +68,9 @@ const AccountsPayable = () => {
   const [debouncedFreelancerSearch] = useDebounce(freelancerSearch, 500);
   const [freelancerLoading, setFreelancerLoading] = useState(false);
   const [reprocessingLoading, setReprocessingLoading] = useState(false);
+
+  // Ref para o campo de pesquisa do freelancer
+  const freelancerSearchRef = useRef<HTMLInputElement>(null);
 
   // Seleção e paginação
   const [selectedTitles, setSelectedTitles] = useState<Set<string>>(new Set());
@@ -245,6 +248,15 @@ const AccountsPayable = () => {
       fetchPaymentRequests();
     }
   }, [activeTab]);
+
+  // Manter foco no campo de pesquisa após atualização da lista de freelancers
+  useEffect(() => {
+    if (freelancers.length > 0 && !freelancerLoading && freelancerSearch.length >= 2) {
+      setTimeout(() => {
+        freelancerSearchRef.current?.focus();
+      }, 10);
+    }
+  }, [freelancers, freelancerLoading, freelancerSearch]);
 
 
   // Filtros
@@ -520,6 +532,7 @@ const AccountsPayable = () => {
                             <div className="p-2 sticky top-0 bg-popover border-b">
                               <div className="flex items-center gap-2">
                                 <Input
+                                  ref={freelancerSearchRef}
                                   placeholder="Digite ao menos 2 caracteres..."
                                   value={freelancerSearch}
                                   onChange={(e) => setFreelancerSearch(e.target.value)}

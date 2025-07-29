@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, CheckCircle, Clock, CreditCard, RefreshCw, RotateCcw, Search, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, CreditCard, RefreshCw, RotateCcw, Search, Loader2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 
@@ -67,6 +67,7 @@ const AccountsPayable = () => {
   const [freelancerSearch, setFreelancerSearch] = useState('');
   const [debouncedFreelancerSearch] = useDebounce(freelancerSearch, 500);
   const [freelancerLoading, setFreelancerLoading] = useState(false);
+  const [reprocessingLoading, setReprocessingLoading] = useState(false);
 
   // Seleção e paginação
   const [selectedTitles, setSelectedTitles] = useState<Set<string>>(new Set());
@@ -363,6 +364,7 @@ const AccountsPayable = () => {
   const confirmReprocess = async () => {
     if (!reprocessModal.titleId) return;
 
+    setReprocessingLoading(true);
     try {
       // Find the payment request data
       const request = paymentRequests.find(req => req.id_titulo === reprocessModal.titleId);
@@ -399,6 +401,8 @@ const AccountsPayable = () => {
         description: "Não foi possível reprocessar a baixa. Tente novamente.",
         variant: "destructive"
       });
+    } finally {
+      setReprocessingLoading(false);
     }
     
     setReprocessModal({ isOpen: false });
@@ -499,35 +503,92 @@ const AccountsPayable = () => {
 
                     <div>
                       <label className="text-sm font-medium mb-2 block">Freelancer</label>
-                      <Select value={selectedFreelancer} onValueChange={setSelectedFreelancer}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um freelancer" />
-                        </SelectTrigger>
-                        <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
-                          <div className="p-2">
-                            <Input
-                              placeholder="Digite ao menos 2 caracteres..."
-                              value={freelancerSearch}
-                              onChange={(e) => setFreelancerSearch(e.target.value)}
-                              className="mb-2"
-                              onKeyDown={(e) => e.stopPropagation()}
-                              autoFocus={false}
-                            />
-                          </div>
-                          
-                          {freelancerLoading ? (
-                            <div className="flex items-center justify-center p-2">
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                      <div className="relative">
+                        <Select 
+                          value={selectedFreelancer} 
+                          onValueChange={(value) => {
+                            setSelectedFreelancer(value);
+                            // Don't trigger fetchTitles here automatically
+                          }}
+                          onOpenChange={(open) => {
+                            if (!open) {
+                              // Keep focus on trigger instead of moving to content
+                               setTimeout(() => {
+                                 const trigger = document.querySelector('[data-freelancer-trigger="true"]') as HTMLElement;
+                                 if (trigger) trigger.focus();
+                               }, 0);
+                            }
+                          }}
+                        >
+                          <SelectTrigger data-freelancer-trigger="true">
+                            <SelectValue placeholder="Selecione um freelancer" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <div className="p-2 sticky top-0 bg-popover border-b">
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  placeholder="Digite ao menos 2 caracteres..."
+                                  value={freelancerSearch}
+                                  onChange={(e) => setFreelancerSearch(e.target.value)}
+                                  className="flex-1"
+                                  onKeyDown={(e) => {
+                                    e.stopPropagation();
+                                    // Prevent arrow keys from navigating to list items
+                                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                                      e.preventDefault();
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                {selectedFreelancer && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedFreelancer('');
+                                      setFreelancerSearch('');
+                                    }}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                          ) : (
-                            freelancers.map(freelancer => (
-                              <SelectItem key={freelancer.id} value={freelancer.id}>
-                                {freelancer.name} {freelancer.lastname}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
+                            
+                            {freelancerLoading ? (
+                              <div className="flex items-center justify-center p-4">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              </div>
+                            ) : freelancers.length > 0 ? (
+                              freelancers.map(freelancer => (
+                                <SelectItem 
+                                  key={freelancer.id} 
+                                  value={freelancer.id}
+                                  onSelect={() => {
+                                    // Focus stays on trigger after selection
+                                     setTimeout(() => {
+                                       const trigger = document.querySelector('[data-freelancer-trigger="true"]') as HTMLElement;
+                                       if (trigger) trigger.focus();
+                                     }, 100);
+                                  }}
+                                >
+                                  {freelancer.name} {freelancer.lastname}
+                                </SelectItem>
+                              ))
+                            ) : freelancerSearch.length >= 2 ? (
+                              <div className="p-4 text-center text-muted-foreground text-sm">
+                                Nenhum freelancer encontrado
+                              </div>
+                            ) : (
+                              <div className="p-4 text-center text-muted-foreground text-sm">
+                                Digite ao menos 2 caracteres para pesquisar
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
                     <div className="flex items-end gap-2">
@@ -1066,8 +1127,13 @@ const AccountsPayable = () => {
               <Button 
                 variant="payment" 
                 onClick={confirmReprocess}
+                disabled={reprocessingLoading}
               >
-                <RotateCcw className="h-4 w-4 mr-2" />
+                {reprocessingLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                )}
                 Confirmar
               </Button>
             </DialogFooter>

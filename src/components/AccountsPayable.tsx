@@ -76,6 +76,7 @@ const AccountsPayable = () => {
   
   const [filteredTitles, setFilteredTitles] = useState<PayableTitle[]>([]);
   const [loading, setLoading] = useState(false);
+  const [requestsLoading, setRequestsLoading] = useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState('titles');
@@ -195,6 +196,7 @@ const AccountsPayable = () => {
   };
 
   const fetchPaymentRequests = async () => {
+    setRequestsLoading(true);
     try {
       const response = await callAPI('processados');
       setPaymentRequests(response || []);
@@ -204,6 +206,8 @@ const AccountsPayable = () => {
         description: "Não foi possível carregar a lista de baixas solicitadas.",
         variant: "destructive"
       });
+    } finally {
+      setRequestsLoading(false);
     }
   };
 
@@ -232,7 +236,7 @@ const AccountsPayable = () => {
     if (startDate && endDate) {
       fetchTitles();
     }
-  }, [startDate, endDate, currentPage, itemsPerPage, selectedFreelancer]);
+  }, [startDate, endDate, currentPage, itemsPerPage]);
 
   // Load payment requests when tab changes
   useEffect(() => {
@@ -702,9 +706,9 @@ const AccountsPayable = () => {
                 <CardContent className="py-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground">
-                        Página {currentPage} de {totalPages} ({totalTitles} títulos)
-                      </span>
+                       <span className="text-sm text-muted-foreground">
+                         Página {currentPage} de {totalPages}
+                       </span>
                       
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">Itens por página:</span>
@@ -794,8 +798,14 @@ const AccountsPayable = () => {
               {/* Tabela de Baixas Solicitadas */}
               <Card className="shadow-financial animate-fade-in">
                 <CardContent className="p-0">
+                  {requestsLoading && (
+                    <div className="flex items-center justify-center p-8">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Carregando baixas solicitadas...</span>
+                    </div>
+                  )}
                   {/* Desktop Table */}
-                  <div className="hidden lg:block overflow-x-auto">
+                  <div className={`hidden lg:block overflow-x-auto ${requestsLoading ? 'opacity-50' : ''}`}>
                     <table className="w-full">
                       <thead className="bg-muted/50 border-b">
                         <tr>
@@ -844,8 +854,8 @@ const AccountsPayable = () => {
                     </table>
                   </div>
 
-                  {/* Mobile Cards */}
-                   <div className="lg:hidden space-y-4 p-4">
+                   {/* Mobile Cards */}
+                    <div className={`lg:hidden space-y-4 p-4 ${requestsLoading ? 'opacity-50' : ''}`}>
                      {filteredPaymentRequests.map((request) => (
                        <Card key={request.id_titulo} className="shadow-sm">
                          <CardContent className="p-4">
@@ -1005,7 +1015,7 @@ const AccountsPayable = () => {
                 Cancelar
               </Button>
               <Button 
-                variant="default" 
+                variant="payment" 
                 onClick={confirmReprocess}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />

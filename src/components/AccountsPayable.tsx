@@ -16,28 +16,31 @@ const API_BASE_URL = 'https://fluxo.riapp.app/webhook/finance';
 
 interface PayableTitle {
   id: string;
-  emission_date: string;
+  memo: string;
+  add_date: string;
   due_date: string;
-  document: string;
-  type: string;
-  order: string;
-  freelancer_name: string;
-  freelancer_id: string; // ID to be sent to API
-  observations: string;
+  amount: string;
+  customer_name: string;
+  customer_lastname: string;
+  document_number?: string;
+  document_type_name?: string;
+  order_id?: string;
   user_name: string;
   user_avatar: string;
-  amount: number;
-  status: 'pending' | 'paid';
 }
 
 interface Freelancer {
   id: string;
   name: string;
+  lastname: string;
+  email: string;
 }
 
 interface Bank {
   id: string;
-  label: string;
+  name: string;
+  account_code: string;
+  active: string;
 }
 
 interface PaymentRequest {
@@ -115,7 +118,9 @@ const AccountsPayable = () => {
   const fetchBanks = async () => {
     try {
       const response = await callAPI('banks/paginate');
-      setBanks(response.data || []);
+      // Filter only active banks
+      const activeBanks = (response || []).filter((bank: Bank) => bank.active === "1");
+      setBanks(activeBanks);
     } catch (error) {
       toast({
         title: "Erro ao carregar bancos",
@@ -128,7 +133,7 @@ const AccountsPayable = () => {
   const fetchFreelancers = async () => {
     try {
       const response = await callAPI('users/paginate');
-      setFreelancers(response.data || []);
+      setFreelancers(response || []);
     } catch (error) {
       toast({
         title: "Erro ao carregar freelancers",
@@ -143,17 +148,23 @@ const AccountsPayable = () => {
     
     setLoading(true);
     try {
-      const response = await callAPI('account_trans/paginate_apr', {
+      const requestData: any = {
         pageNumber: currentPage,
         pageSize: itemsPerPage,
         start_date: startDate,
-        end_date: endDate,
-        customer_id: selectedFreelancer || undefined
-      });
+        end_date: endDate
+      };
 
-      setTitles(response.data || []);
-      setFilteredTitles(response.data || []);
-      setTotalTitles(response.total || 0);
+      // Only add customer_id if a specific freelancer is selected (not "all")
+      if (selectedFreelancer && selectedFreelancer !== "all") {
+        requestData.customer_id = selectedFreelancer;
+      }
+
+      const response = await callAPI('account_trans/paginate_apr', requestData);
+
+      setTitles(response || []);
+      setFilteredTitles(response || []);
+      setTotalTitles(response?.length || 0);
     } catch (error) {
       toast({
         title: "Erro ao carregar títulos",
@@ -168,7 +179,7 @@ const AccountsPayable = () => {
   const fetchPaymentRequests = async () => {
     try {
       const response = await callAPI('processados');
-      setPaymentRequests(response.data || []);
+      setPaymentRequests(response || []);
     } catch (error) {
       toast({
         title: "Erro ao carregar baixas solicitadas",
@@ -211,7 +222,7 @@ const AccountsPayable = () => {
 
   // Filtros
   const filteredFreelancers = freelancers.filter(f => 
-    f.name.toLowerCase().includes(freelancerSearch.toLowerCase())
+    `${f.name} ${f.lastname}`.toLowerCase().includes(freelancerSearch.toLowerCase())
   );
 
   // Paginação usando dados da API
@@ -278,7 +289,7 @@ const AccountsPayable = () => {
       id_titulo: title.id,
       dt_payment: paymentDate,
       account_code: selectedBank,
-      memo: title.observations || ""
+      memo: title.memo || ""
     }));
 
     try {
@@ -287,7 +298,7 @@ const AccountsPayable = () => {
       if (paymentModal.type === 'single') {
         toast({
           title: "Baixa realizada",
-          description: `Título ${paymentModal.title?.document} pago com sucesso`,
+          description: `Título ${paymentModal.title?.document_number || paymentModal.title?.id} pago com sucesso`,
         });
       } else {
         toast({
@@ -382,8 +393,8 @@ const AccountsPayable = () => {
   const isFilterDisabled = !startDate || !endDate;
 
   const selectedTotal = Array.from(selectedTitles)
-  .map(id => titles.find(t => t.id === id)?.amount || 0)
-  .reduce((acc, val) => acc + val, 0);
+  .map(id => titles.find(t => t.id === id)?.amount || "0")
+  .reduce((acc, val) => acc + parseFloat(val), 0);
 
   return (
     <TooltipProvider>
@@ -456,7 +467,7 @@ const AccountsPayable = () => {
                           <SelectItem value="all">Todos os freelancers</SelectItem>
                           {filteredFreelancers.map(freelancer => (
                             <SelectItem key={freelancer.id} value={freelancer.id}>
-                              {freelancer.name}
+                              {freelancer.name} {freelancer.lastname}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -528,23 +539,25 @@ const AccountsPayable = () => {
                                 onCheckedChange={(checked) => handleSelectTitle(title.id, checked as boolean)}
                               />
                             </td>
-                            <td className="p-4 text-sm">{formatDate(title.emission_date)}</td>
+                            <td className="p-4 text-sm">{formatDate(title.add_date)}</td>
                             <td className="p-4 text-sm">{formatDate(title.due_date)}</td>
                             <td className="p-4">
-                              <Badge variant="outline">{title.document}</Badge>
+                              <Badge variant="outline">{title.document_number || title.id}</Badge>
                             </td>
-                            <td className="p-4 text-sm">{title.type}</td>
-                            <td className="p-4 text-sm font-mono">{title.order}</td>
-                            <td className="p-4 text-sm font-medium">{title.freelancer_name}</td>
+                            <td className="p-4 text-sm">{title.document_type_name || '-'}</td>
+                            <td className="p-4 text-sm font-mono">{title.order_id || '-'}</td>
+                            <td className="p-4 text-sm font-medium">
+                              {title.customer_name} {title.customer_lastname || ''}
+                            </td>
                             <td className="p-4 max-w-48">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div className="text-sm truncate text-left">
-                                    {title.observations}
+                                    {title.memo}
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-sm">
-                                  <p>{title.observations}</p>
+                                  <p>{title.memo}</p>
                                 </TooltipContent>
                               </Tooltip>
                             </td>
@@ -552,14 +565,14 @@ const AccountsPayable = () => {
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
                                   <AvatarImage src={title.user_avatar} />
-                                  <AvatarFallback>{title.user_name[0]}</AvatarFallback>
+                                  <AvatarFallback>{title.user_name?.[0] || 'U'}</AvatarFallback>
                                 </Avatar>
                                 <span className="text-sm">{title.user_name}</span>
                               </div>
                             </td>
                             <td className="p-4">
                               <span className="font-semibold text-success">
-                                {formatCurrency(title.amount)}
+                                {formatCurrency(parseFloat(title.amount))}
                               </span>
                             </td>
                             <td className="p-4">
@@ -588,13 +601,13 @@ const AccountsPayable = () => {
                                 checked={selectedTitles.has(title.id)}
                                 onCheckedChange={(checked) => handleSelectTitle(title.id, checked as boolean)}
                               />
-                              <Badge variant="outline">{title.document}</Badge>
+                              <Badge variant="outline">{title.document_number || title.id}</Badge>
                             </div>
                             <Button
                               variant="payment"
                               size="sm"
                               onClick={() => handleSinglePayment(title)}
-                              disabled={title.amount <= 0}
+                              disabled={parseFloat(title.amount) <= 0}
                             >
                               <CreditCard className="h-4 w-4" />
                             </Button>
@@ -603,13 +616,15 @@ const AccountsPayable = () => {
                           <div className="space-y-2">
                             <div className="flex justify-between">
                               <span className="text-sm text-muted-foreground">Freelancer:</span>
-                              <span className="text-sm font-medium">{title.freelancer_name}</span>
+                              <span className="text-sm font-medium">
+                                {title.customer_name} {title.customer_lastname || ''}
+                              </span>
                             </div>
                             
                             <div className="flex justify-between">
                               <span className="text-sm text-muted-foreground">Valor:</span>
                               <span className="text-sm font-semibold text-success">
-                                {formatCurrency(title.amount)}
+                                {formatCurrency(parseFloat(title.amount))}
                               </span>
                             </div>
 
@@ -620,20 +635,20 @@ const AccountsPayable = () => {
 
                             <div className="flex justify-between">
                               <span className="text-sm text-muted-foreground">Tipo:</span>
-                              <span className="text-sm">{title.type}</span>
+                              <span className="text-sm">{title.document_type_name || '-'}</span>
                             </div>
 
                             <div className="flex items-center gap-2 mt-3">
                               <Avatar className="h-6 w-6">
                                 <AvatarImage src={title.user_avatar} />
-                                <AvatarFallback className="text-xs">{title.user_name[0]}</AvatarFallback>
+                                <AvatarFallback className="text-xs">{title.user_name?.[0] || 'U'}</AvatarFallback>
                               </Avatar>
                               <span className="text-xs text-muted-foreground">{title.user_name}</span>
                             </div>
 
-                            {title.observations && (
+                            {title.memo && (
                               <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
-                                {title.observations}
+                                {title.memo}
                               </div>
                             )}
                           </div>
@@ -847,14 +862,14 @@ const AccountsPayable = () => {
               <DialogDescription>
                 {paymentModal.type === 'single' ? (
                   <>
-                    Confirmar baixa do título <strong>{paymentModal.title?.document}</strong> de{' '}
-                    <strong>{paymentModal.title?.freelancer_name}</strong>?
-                    <div className="mt-2 p-3 bg-muted/50 rounded">
-                      <div className="text-sm text-muted-foreground mb-1">Total:</div>
-                      <div className="text-lg font-semibold text-success">
-                        {paymentModal.title && formatCurrency(paymentModal.title.amount)}
-                      </div>
-                    </div>
+                     Confirmar baixa do título <strong>{paymentModal.title?.document_number || paymentModal.title?.id}</strong> de{' '}
+                     <strong>{paymentModal.title?.customer_name} {paymentModal.title?.customer_lastname || ''}</strong>?
+                     <div className="mt-2 p-3 bg-muted/50 rounded">
+                       <div className="text-sm text-muted-foreground mb-1">Total:</div>
+                       <div className="text-lg font-semibold text-success">
+                         {paymentModal.title && formatCurrency(parseFloat(paymentModal.title.amount))}
+                       </div>
+                     </div>
                   </>
                 ) : (
                  <>
@@ -880,9 +895,9 @@ const AccountsPayable = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {banks.map(bank => (
-                      <SelectItem key={bank.id} value={bank.id}>
-                        {bank.label}
-                      </SelectItem>
+                       <SelectItem key={bank.id} value={bank.account_code}>
+                         {bank.name}
+                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

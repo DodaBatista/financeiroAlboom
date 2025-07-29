@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, CreditCard, RefreshCw, RotateCcw, Search } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, CreditCard, RefreshCw, RotateCcw, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface PayableTitle {
@@ -437,18 +437,27 @@ const AccountsPayable = () => {
   };
 
   // Filter payment requests
-  const filteredPaymentRequests = paymentRequests.filter(request => 
-    !selectedStatus || request.status === selectedStatus
-  );
+  const filteredPaymentRequests = selectedStatus === 'default' || !selectedStatus
+  ? paymentRequests
+  : paymentRequests.filter(request => request.status === selectedStatus); 
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'Processado': return 'default';
+      case 'Processado': return 'success';
       case 'Em processamento': return 'secondary';
       case 'Erro': return 'destructive';
       default: return 'outline';
     }
   };
+
+  const getStatusBadgeIcon = (status: string) => {
+  switch (status) {
+    case 'Processado': return <CheckCircle className="w-3 h-3 mr-1" />;
+    case 'Em processamento': return <Clock className="w-3 h-3 mr-1" />;
+    case 'Erro': return <AlertCircle className="w-3 h-3 mr-1" />;
+    default: return null;
+  }
+}
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -777,7 +786,7 @@ const AccountsPayable = () => {
                           <SelectValue placeholder="Todos os status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todos os status</SelectItem>
+                          <SelectItem value="default">Todos os status</SelectItem>
                           <SelectItem value="Processado">Processado</SelectItem>
                           <SelectItem value="Em processamento">Em processamento</SelectItem>
                           <SelectItem value="Erro">Erro</SelectItem>
@@ -823,8 +832,12 @@ const AccountsPayable = () => {
                               <div className="truncate">{request.details}</div>
                             </td>
                             <td className="p-4">
+                              
                               <Badge variant={getStatusBadgeVariant(request.status)}>
-                                {request.status}
+                                <span className="flex items-center">
+                                  {getStatusBadgeIcon(request.status)}
+                                  {request.status}
+                                </span>
                               </Badge>
                             </td>
                             <td className="p-4">
@@ -899,7 +912,7 @@ const AccountsPayable = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-success" />
-                Confirmar Baixa
+                {paymentModal.selectedCount > 1 ? "Confirmar Baixas" : "Confirmar Baixa" }
               </DialogTitle>
               <DialogDescription>
                 {paymentModal.type === 'single' ? (
@@ -973,7 +986,7 @@ const AccountsPayable = () => {
                 disabled={!selectedBank || !paymentDate}
               >
                 <CreditCard className="h-4 w-4 mr-2" />
-                Confirmar Baixa
+                Confirmar
               </Button>
             </DialogFooter>
           </DialogContent>

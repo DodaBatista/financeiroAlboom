@@ -319,7 +319,7 @@ const AccountsPayable = () => {
     }));
 
     try {
-      await callAPI('account_trans/clear_apr', { payments: payload });
+      await callAPI('account_trans/clear_apr', { Titulo: payload });
       
       if (paymentModal.type === 'single') {
         toast({
@@ -383,7 +383,7 @@ const AccountsPayable = () => {
         memo: request.memo
       }];
 
-      await callAPI('account_trans/clear_apr', payload);
+      await callAPI('account_trans/clear_apr', { Titulo: payload });
       
       toast({
         title: "Reprocessamento bem-sucedido",
@@ -591,7 +591,7 @@ const AccountsPayable = () => {
                         </tr>
                       </thead>
                        <tbody>
-                         {paginatedTitles.length === 0 ? (
+                         {paginatedTitles.length === 0 && !loading ? (
                            <tr>
                              <td colSpan={11} className="p-8 text-center text-muted-foreground">
                                Nenhum título encontrado com os filtros selecionados.
@@ -659,7 +659,7 @@ const AccountsPayable = () => {
 
                    {/* Mobile Cards */}
                    <div className={`lg:hidden space-y-4 p-4 ${loading ? 'opacity-50' : ''}`}>
-                     {paginatedTitles.length === 0 ? (
+                     {paginatedTitles.length === 0 && !loading ? (
                        <div className="text-center p-8 text-muted-foreground">
                          Nenhum título encontrado com os filtros selecionados.
                        </div>
@@ -845,8 +845,15 @@ const AccountsPayable = () => {
                           <th className="p-4 text-left text-sm font-medium">Ação</th>
                         </tr>
                       </thead>
-                       <tbody>
-                         {filteredPaymentRequests.map((request) => (
+                        <tbody>
+                          {filteredPaymentRequests.length === 0 && !requestsLoading ? (
+                            <tr>
+                              <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                                Nenhum registro encontrado.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredPaymentRequests.map((request) => (
                            <tr key={request.id_titulo} className="border-b hover:bg-muted/20 transition-colors">
                              <td className="p-4">
                                <Badge variant="outline">{request.id_titulo}</Badge>
@@ -879,8 +886,8 @@ const AccountsPayable = () => {
                                )}
                              </td>
                            </tr>
-                         ))}
-                      </tbody>
+                          )))}
+                       </tbody>
                     </table>
                   </div>
 

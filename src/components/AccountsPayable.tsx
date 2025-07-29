@@ -49,7 +49,7 @@ interface PaymentRequest {
   dt_payment: string;
   account_code: string;
   memo: string;
-  status: 'Processado' | 'Processando' | 'Erro';
+  status: 'Sucesso' | 'Processando' | 'Erro';
   created_at: string;
 }
 
@@ -415,7 +415,8 @@ const AccountsPayable = () => {
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'Processado': return 'success';
+      case 'Sucesso': return 'success';
+      case 'Processado': return 'success'; // Legacy support
       case 'Processando': return 'secondary';
       case 'Erro': return 'destructive';
       default: return 'outline';
@@ -424,7 +425,8 @@ const AccountsPayable = () => {
 
   const getStatusBadgeIcon = (status: string) => {
   switch (status) {
-    case 'Processado': return <CheckCircle className="w-3 h-3 mr-1" />;
+    case 'Sucesso': return <CheckCircle className="w-3 h-3 mr-1" />;
+    case 'Processado': return <CheckCircle className="w-3 h-3 mr-1" />; // Legacy support
     case 'Processando': return <Clock className="w-3 h-3 mr-1" />;
     case 'Erro': return <AlertCircle className="w-3 h-3 mr-1" />;
     default: return null;
@@ -504,26 +506,17 @@ const AccountsPayable = () => {
                     <div>
                       <label className="text-sm font-medium mb-2 block">Freelancer</label>
                       <div className="relative">
-                        <Select 
+                         <Select 
                           value={selectedFreelancer} 
                           onValueChange={(value) => {
                             setSelectedFreelancer(value);
                             // Don't trigger fetchTitles here automatically
                           }}
-                          onOpenChange={(open) => {
-                            if (!open) {
-                              // Keep focus on trigger instead of moving to content
-                               setTimeout(() => {
-                                 const trigger = document.querySelector('[data-freelancer-trigger="true"]') as HTMLElement;
-                                 if (trigger) trigger.focus();
-                               }, 0);
-                            }
-                          }}
                         >
                           <SelectTrigger data-freelancer-trigger="true">
                             <SelectValue placeholder="Selecione um freelancer" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent autoFocus={false}>
                             <div className="p-2 sticky top-0 bg-popover border-b">
                               <div className="flex items-center gap-2">
                                 <Input
@@ -531,6 +524,7 @@ const AccountsPayable = () => {
                                   value={freelancerSearch}
                                   onChange={(e) => setFreelancerSearch(e.target.value)}
                                   className="flex-1"
+                                  autoFocus
                                   onKeyDown={(e) => {
                                     e.stopPropagation();
                                     // Prevent arrow keys from navigating to list items
@@ -566,13 +560,6 @@ const AccountsPayable = () => {
                                 <SelectItem 
                                   key={freelancer.id} 
                                   value={freelancer.id}
-                                  onSelect={() => {
-                                    // Focus stays on trigger after selection
-                                     setTimeout(() => {
-                                       const trigger = document.querySelector('[data-freelancer-trigger="true"]') as HTMLElement;
-                                       if (trigger) trigger.focus();
-                                     }, 100);
-                                  }}
                                 >
                                   {freelancer.name} {freelancer.lastname}
                                 </SelectItem>
@@ -877,7 +864,7 @@ const AccountsPayable = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="default">Todos os status</SelectItem>
-                          <SelectItem value="Processado">Processado</SelectItem>
+                          <SelectItem value="Sucesso">Sucesso</SelectItem>
                           <SelectItem value="Processando">Processando</SelectItem>
                           <SelectItem value="Erro">Erro</SelectItem>
                         </SelectContent>

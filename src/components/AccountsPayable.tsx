@@ -44,10 +44,12 @@ interface Bank {
 }
 
 interface PaymentRequest {
-  id: string;
-  title_id: string;
-  details: string;
-  status: 'Processado' | 'Em processamento' | 'Erro';
+  id_titulo: string;
+  dt_payment: string;
+  account_code: string;
+  memo: string;
+  status: 'Processado' | 'Processando' | 'Erro';
+  created_at: string;
 }
 
 const AccountsPayable = () => {
@@ -334,10 +336,14 @@ const AccountsPayable = () => {
     });
   };
 
-  const handleReprocess = async (requestId: string) => {
+  const handleReprocess = async (titleId: string) => {
+    // Show confirmation dialog first
+    const confirmed = window.confirm('Deseja realmente reprocessar esta baixa?');
+    if (!confirmed) return;
+
     try {
       // Send reprocess request to API
-      await callAPI('reprocess', { requestId });
+      await callAPI('reprocess', { id_titulo: titleId });
       
       toast({
         title: "Reprocessamento bem-sucedido",
@@ -364,7 +370,7 @@ const AccountsPayable = () => {
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'Processado': return 'success';
-      case 'Em processamento': return 'secondary';
+      case 'Processando': return 'secondary';
       case 'Erro': return 'destructive';
       default: return 'outline';
     }
@@ -373,7 +379,7 @@ const AccountsPayable = () => {
   const getStatusBadgeIcon = (status: string) => {
   switch (status) {
     case 'Processado': return <CheckCircle className="w-3 h-3 mr-1" />;
-    case 'Em processamento': return <Clock className="w-3 h-3 mr-1" />;
+    case 'Processando': return <Clock className="w-3 h-3 mr-1" />;
     case 'Erro': return <AlertCircle className="w-3 h-3 mr-1" />;
     default: return null;
   }
@@ -733,7 +739,7 @@ const AccountsPayable = () => {
                         <SelectContent>
                           <SelectItem value="default">Todos os status</SelectItem>
                           <SelectItem value="Processado">Processado</SelectItem>
-                          <SelectItem value="Em processamento">Em processamento</SelectItem>
+                          <SelectItem value="Processando">Processando</SelectItem>
                           <SelectItem value="Erro">Erro</SelectItem>
                         </SelectContent>
                       </Select>
@@ -767,77 +773,84 @@ const AccountsPayable = () => {
                           <th className="p-4 text-left text-sm font-medium">Ação</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {filteredPaymentRequests.map((request) => (
-                          <tr key={request.id} className="border-b hover:bg-muted/20 transition-colors">
-                            <td className="p-4">
-                              <Badge variant="outline">{request.title_id}</Badge>
-                            </td>
-                            <td className="p-4 text-sm max-w-xs">
-                              <div className="truncate">{request.details}</div>
-                            </td>
-                            <td className="p-4">
-                              
-                              <Badge variant={getStatusBadgeVariant(request.status)}>
-                                <span className="flex items-center">
-                                  {getStatusBadgeIcon(request.status)}
-                                  {request.status}
-                                </span>
-                              </Badge>
-                            </td>
-                            <td className="p-4">
-                              {request.status === 'Erro' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReprocess(request.id)}
-                                >
-                                  <RotateCcw className="h-4 w-4 mr-1" />
-                                  Reprocessar
-                                </Button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                       <tbody>
+                         {filteredPaymentRequests.map((request) => (
+                           <tr key={request.id_titulo} className="border-b hover:bg-muted/20 transition-colors">
+                             <td className="p-4">
+                               <Badge variant="outline">{request.id_titulo}</Badge>
+                             </td>
+                             <td className="p-4 text-sm max-w-xs">
+                               <div className="space-y-1">
+                                 <div className="font-medium">{request.memo}</div>
+                                 <div className="text-muted-foreground">Conta: {request.account_code}</div>
+                                 <div className="text-muted-foreground">Data: {formatDate(request.dt_payment)}</div>
+                               </div>
+                             </td>
+                             <td className="p-4">
+                               <Badge variant={getStatusBadgeVariant(request.status)}>
+                                 <span className="flex items-center">
+                                   {getStatusBadgeIcon(request.status)}
+                                   {request.status}
+                                 </span>
+                               </Badge>
+                             </td>
+                             <td className="p-4">
+                               {request.status === 'Erro' && (
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => handleReprocess(request.id_titulo)}
+                                 >
+                                   <RotateCcw className="h-4 w-4 mr-1" />
+                                   Reprocessar
+                                 </Button>
+                               )}
+                             </td>
+                           </tr>
+                         ))}
                       </tbody>
                     </table>
                   </div>
 
                   {/* Mobile Cards */}
-                  <div className="lg:hidden space-y-4 p-4">
-                    {filteredPaymentRequests.map((request) => (
-                      <Card key={request.id} className="shadow-sm">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <Badge variant="outline">{request.title_id}</Badge>
-                            <Badge variant={getStatusBadgeVariant(request.status)}>
-                              {request.status}
-                            </Badge>
-                          </div>
+                   <div className="lg:hidden space-y-4 p-4">
+                     {filteredPaymentRequests.map((request) => (
+                       <Card key={request.id_titulo} className="shadow-sm">
+                         <CardContent className="p-4">
+                           <div className="flex items-start justify-between mb-3">
+                             <Badge variant="outline">{request.id_titulo}</Badge>
+                             <Badge variant={getStatusBadgeVariant(request.status)}>
+                               {request.status}
+                             </Badge>
+                           </div>
 
-                          <div className="space-y-2">
-                            <div>
-                              <span className="text-sm text-muted-foreground">Detalhes:</span>
-                              <div className="text-sm mt-1">{request.details}</div>
-                            </div>
-                            
-                            {request.status === 'Erro' && (
-                              <div className="mt-3">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReprocess(request.id)}
-                                  className="w-full"
-                                >
-                                  <RotateCcw className="h-4 w-4 mr-1" />
-                                  Reprocessar Baixa
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                           <div className="space-y-2">
+                             <div>
+                               <span className="text-sm text-muted-foreground">Detalhes:</span>
+                               <div className="text-sm mt-1 space-y-1">
+                                 <div className="font-medium">{request.memo}</div>
+                                 <div className="text-muted-foreground">Conta: {request.account_code}</div>
+                                 <div className="text-muted-foreground">Data: {formatDate(request.dt_payment)}</div>
+                               </div>
+                             </div>
+                             
+                             {request.status === 'Erro' && (
+                               <div className="mt-3">
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => handleReprocess(request.id_titulo)}
+                                   className="w-full"
+                                 >
+                                   <RotateCcw className="h-4 w-4 mr-1" />
+                                   Reprocessar Baixa
+                                 </Button>
+                               </div>
+                             )}
+                           </div>
+                         </CardContent>
+                       </Card>
+                     ))}
                   </div>
                 </CardContent>
               </Card>

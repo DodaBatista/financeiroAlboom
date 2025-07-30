@@ -244,7 +244,14 @@ const AccountsPayable = () => {
     fetchFreelancers(debouncedFreelancerSearch);
   }, [debouncedFreelancerSearch]);
 
-  // Load titles when page or items per page change (removed startDate/endDate auto trigger)
+  // Load titles when startDate and endDate are initially set
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchTitles();
+    }
+  }, [startDate, endDate]);
+
+  // Load titles when page or items per page change
   useEffect(() => {
     if (startDate && endDate) {
       fetchTitles();

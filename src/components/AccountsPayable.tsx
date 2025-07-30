@@ -683,7 +683,7 @@ const AccountsPayable = () => {
                           <th className="p-4 text-left text-sm font-medium">Doc</th>
                           <th className="p-4 text-left text-sm font-medium">Tipo</th>
                           <th className="p-4 text-left text-sm font-medium">Pedido</th>
-                          <th className="p-4 text-left text-sm font-medium">Freelancer</th>
+                          <th className="p-4 text-left text-sm font-medium">Fornecedor</th>
                           <th className="p-4 text-left text-sm font-medium">Observações</th>
                           <th className="p-4 text-left text-sm font-medium">Usuário</th>
                           <th className="p-4 text-left text-sm font-medium">Valor</th>

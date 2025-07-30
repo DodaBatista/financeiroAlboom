@@ -68,6 +68,7 @@ const AccountsPayable = () => {
   const [debouncedFreelancerSearch] = useDebounce(freelancerSearch, 500);
   const [freelancerLoading, setFreelancerLoading] = useState(false);
   const [reprocessingLoading, setReprocessingLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   // Ref para o campo de pesquisa do freelancer
   const freelancerSearchRef = useRef<HTMLInputElement>(null);
@@ -243,12 +244,12 @@ const AccountsPayable = () => {
     fetchFreelancers(debouncedFreelancerSearch);
   }, [debouncedFreelancerSearch]);
 
-  // Load titles when dates or filters change
+  // Load titles when page or items per page change (removed startDate/endDate auto trigger)
   useEffect(() => {
     if (startDate && endDate) {
       fetchTitles();
     }
-  }, [startDate, endDate, currentPage, itemsPerPage]);
+  }, [currentPage, itemsPerPage]);
 
   // Load payment requests when tab changes
   useEffect(() => {
@@ -327,6 +328,8 @@ const AccountsPayable = () => {
       return;
     }
 
+    setPaymentLoading(true);
+    
     // Prepare payload for API
     const titlesToProcess = paymentModal.type === 'single' 
       ? [paymentModal.title!] 
@@ -364,6 +367,8 @@ const AccountsPayable = () => {
         description: "Não foi possível processar o pagamento. Tente novamente.",
         variant: "destructive"
       });
+    } finally {
+      setPaymentLoading(false);
     }
     
     // Reset form and close modal
@@ -410,6 +415,8 @@ const AccountsPayable = () => {
       toast({
         title: "Reprocessamento bem-sucedido",
         description: "A baixa foi reprocessada com sucesso",
+        variant: "default",
+        className: "bg-green-50 border-green-200 text-green-800"
       });
       
       // Auto-refresh the table
@@ -461,7 +468,10 @@ const AccountsPayable = () => {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR');
+    // Split the date string to avoid timezone issues
+    const [year, month, day] = date.split('-');
+    const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    return dateObj.toLocaleDateString('pt-BR');
   };
 
   const isFilterDisabled = !startDate || !endDate;
@@ -528,81 +538,86 @@ const AccountsPayable = () => {
                       />
                     </div>
 
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Freelancer</label>
-                      <div className="relative">
-                         <Select 
-                          value={selectedFreelancer} 
-                          onValueChange={(value) => {
-                            setSelectedFreelancer(value);
-                            // Don't trigger fetchTitles here automatically
-                          }}
-                        >
-                          <SelectTrigger data-freelancer-trigger="true">
-                            <SelectValue placeholder="Selecione um freelancer" />
-                          </SelectTrigger>
-                          <SelectContent autoFocus={false}>
-                            <div className="p-2 sticky top-0 bg-popover border-b">
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  ref={freelancerSearchRef}
-                                  placeholder="Digite ao menos 2 caracteres..."
-                                  value={freelancerSearch}
-                                  onChange={(e) => setFreelancerSearch(e.target.value)}
-                                  className="flex-1"
-                                  autoFocus
-                                  onKeyDown={(e) => {
-                                    e.stopPropagation();
-                                    // Prevent arrow keys from navigating to list items
-                                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                                      e.preventDefault();
-                                    }
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                                {selectedFreelancer && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedFreelancer('');
-                                      setFreelancerSearch('');
-                                    }}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {freelancerLoading ? (
-                              <div className="flex items-center justify-center p-4">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              </div>
-                            ) : freelancers.length > 0 ? (
-                              freelancers.map(freelancer => (
-                                <SelectItem 
-                                  key={freelancer.id} 
-                                  value={freelancer.id}
-                                >
-                                  {freelancer.name} {freelancer.lastname}
-                                </SelectItem>
-                              ))
-                            ) : freelancerSearch.length >= 2 ? (
-                              <div className="p-4 text-center text-muted-foreground text-sm">
-                                Nenhum freelancer encontrado
-                              </div>
-                            ) : (
-                              <div className="p-4 text-center text-muted-foreground text-sm">
-                                Digite ao menos 2 caracteres para pesquisar
-                              </div>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+                     <div>
+                       <label className="text-sm font-medium mb-2 block">Freelancer</label>
+                       <div className="flex items-center gap-2">
+                          <Select 
+                           value={selectedFreelancer} 
+                           onValueChange={(value) => {
+                             setSelectedFreelancer(value);
+                             // Don't trigger fetchTitles here automatically
+                           }}
+                         >
+                           <SelectTrigger data-freelancer-trigger="true" className="flex-1">
+                             <SelectValue placeholder="Selecione um freelancer" />
+                           </SelectTrigger>
+                           <SelectContent 
+                             autoFocus={false}
+                             className="z-50 max-h-[300px] overflow-y-auto bg-popover"
+                             position="popper"
+                             sideOffset={5}
+                           >
+                             <div className="p-2 sticky top-0 bg-popover border-b z-10">
+                               <Input
+                                 ref={freelancerSearchRef}
+                                 placeholder="Digite ao menos 2 caracteres..."
+                                 value={freelancerSearch}
+                                 onChange={(e) => setFreelancerSearch(e.target.value)}
+                                 className="w-full"
+                                 autoFocus
+                                 onKeyDown={(e) => {
+                                   e.stopPropagation();
+                                   // Prevent arrow keys from navigating to list items
+                                   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                                     e.preventDefault();
+                                   }
+                                 }}
+                                 onClick={(e) => e.stopPropagation()}
+                               />
+                             </div>
+                             
+                             {freelancerLoading ? (
+                               <div className="flex items-center justify-center p-4">
+                                 <Loader2 className="h-4 w-4 animate-spin" />
+                               </div>
+                             ) : freelancers.length > 0 ? (
+                               freelancers.map(freelancer => (
+                                 <SelectItem 
+                                   key={freelancer.id} 
+                                   value={freelancer.id}
+                                   className="max-w-full truncate"
+                                 >
+                                   <span className="truncate">{freelancer.name} {freelancer.lastname}</span>
+                                 </SelectItem>
+                               ))
+                             ) : freelancerSearch.length >= 2 ? (
+                               <div className="p-4 text-center text-muted-foreground text-sm">
+                                 Nenhum freelancer encontrado
+                               </div>
+                             ) : (
+                               <div className="p-4 text-center text-muted-foreground text-sm">
+                                 Digite ao menos 2 caracteres para pesquisar
+                               </div>
+                             )}
+                           </SelectContent>
+                         </Select>
+                         
+                         {selectedFreelancer && (
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => {
+                               setSelectedFreelancer('');
+                               setFreelancerSearch('');
+                             }}
+                             className="h-10 w-10 p-0 flex-shrink-0"
+                             title="Limpar seleção"
+                           >
+                             <X className="h-4 w-4" />
+                           </Button>
+                         )}
+                       </div>
+                     </div>
 
                     <div className="flex items-end gap-2">
                       <Button 
@@ -1131,9 +1146,13 @@ const AccountsPayable = () => {
               <Button 
                 variant="payment" 
                 onClick={confirmPayment}
-                disabled={!selectedBank || !paymentDate}
+                disabled={!selectedBank || !paymentDate || paymentLoading}
               >
-                <CreditCard className="h-4 w-4 mr-2" />
+                {paymentLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4 mr-2" />
+                )}
                 Confirmar
               </Button>
             </DialogFooter>

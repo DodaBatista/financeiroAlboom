@@ -104,6 +104,7 @@ const AccountsPayable = () => {
 
   // Estado para pesquisa de banco no modal
   const [bankSearch, setBankSearch] = useState('');
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // Payment form state
   const [selectedBank, setSelectedBank] = useState(''); // No default selection
@@ -232,6 +233,14 @@ const AccountsPayable = () => {
     
     setStartDate(firstDay.toISOString().split('T')[0]);
     setEndDate(lastDay.toISOString().split('T')[0]);
+    
+    // Fazer o carregamento inicial dos títulos após definir as datas
+    if (!initialLoadComplete) {
+      setTimeout(() => {
+        fetchTitles();
+        setInitialLoadComplete(true);
+      }, 100);
+    }
   }, []);
 
   // Load initial data
@@ -243,13 +252,6 @@ const AccountsPayable = () => {
   useEffect(() => {
     fetchFreelancers(debouncedFreelancerSearch);
   }, [debouncedFreelancerSearch]);
-
-  // Load titles when startDate and endDate are initially set
-  useEffect(() => {
-    if (startDate && endDate) {
-      fetchTitles();
-    }
-  }, [startDate, endDate]);
 
   // Load titles when page or items per page change
   useEffect(() => {

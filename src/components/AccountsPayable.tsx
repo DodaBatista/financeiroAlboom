@@ -104,7 +104,7 @@ const AccountsPayable = () => {
 
   // Estado para pesquisa de banco no modal
   const [bankSearch, setBankSearch] = useState('');
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [hasFetchedInitialList, setHasFetchedInitialList] = useState(false);
 
   // Payment form state
   const [selectedBank, setSelectedBank] = useState(''); // No default selection
@@ -233,15 +233,15 @@ const AccountsPayable = () => {
     
     setStartDate(firstDay.toISOString().split('T')[0]);
     setEndDate(lastDay.toISOString().split('T')[0]);
-    
-    // Fazer o carregamento inicial dos títulos após definir as datas
-    if (!initialLoadComplete) {
-      setTimeout(() => {
-        fetchTitles();
-        setInitialLoadComplete(true);
-      }, 100);
-    }
   }, []);
+
+  // Carregar títulos automaticamente na primeira renderização
+  useEffect(() => {
+    if (!hasFetchedInitialList && startDate && endDate) {
+      fetchTitles();
+      setHasFetchedInitialList(true);
+    }
+  }, [startDate, endDate]);
 
   // Load initial data
   useEffect(() => {

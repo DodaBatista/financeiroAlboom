@@ -252,8 +252,8 @@ const AccountsPayable = () => {
         requestData.customer_id = selectedContact;
       }
 
-      // Add payment type filter if selected
-      if (selectedPaymentType) {
+      // Add payment type filter if selected and not "all"
+      if (selectedPaymentType && selectedPaymentType !== 'all') {
         requestData.doc_type = selectedPaymentType;
       }
 
@@ -652,7 +652,7 @@ const AccountsPayable = () => {
                             <SelectValue placeholder="Selecione o tipo" />
                           </SelectTrigger>
                           <SelectContent className="z-50 max-h-[300px] overflow-y-auto bg-popover">
-                            <SelectItem value="">Todos os tipos</SelectItem>
+                            <SelectItem value="all">Todos os tipos</SelectItem>
                             {paymentTypes.map(type => (
                               <SelectItem key={type.id} value={type.id}>
                                 {type.name}

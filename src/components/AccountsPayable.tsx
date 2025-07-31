@@ -621,8 +621,8 @@ const AccountsPayable = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Primeira linha - Datas */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Linha 1: Filtros principais */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div>
                         <label className="text-sm font-medium mb-2 block">Data Inicial *</label>
                         <Input
@@ -662,34 +662,16 @@ const AccountsPayable = () => {
                         </Select>
                       </div>
 
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">Itens por página</label>
-                        <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                          setItemsPerPage(Number(value));
-                          setCurrentPage(1);
-                        }}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="z-50 bg-popover">
-                            <SelectItem value="25">25</SelectItem>
-                            <SelectItem value="50">50</SelectItem>
-                            <SelectItem value="100">100</SelectItem>
-                            <SelectItem value="150">150</SelectItem>
-                            <SelectItem value="200">200</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                     </div>
 
-                    {/* Segunda linha - Filtro por Fornecedor/Freelancer */}
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-4">
-                        <label className="text-sm font-medium">Filtrar por:</label>
+                    {/* Linha 2: Entidade e seleção */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Tipo de Entidade</label>
                         <RadioGroup 
                           value={filterType} 
                           onValueChange={(value: 'supplier' | 'freelancer') => setFilterType(value)}
-                          className="flex items-center space-x-4"
+                          className="flex flex-row gap-6 mt-2"
                         >
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="supplier" id="supplier" />
@@ -859,8 +841,8 @@ const AccountsPayable = () => {
                       )}
                     </div>
 
-                    {/* Terceira linha - Botões */}
-                    <div className="flex items-end gap-2 pt-2">
+                    {/* Linha 3: Ações */}
+                    <div className="flex flex-col sm:flex-row gap-4 pt-2">
                       <Button 
                         onClick={handleFilter}
                         disabled={isFilterDisabled}
@@ -909,7 +891,7 @@ const AccountsPayable = () => {
                            <th className="p-4 text-left text-sm font-medium">Doc</th>
                            <th className="p-4 text-left text-sm font-medium">Tipo</th>
                            <th className="p-4 text-left text-sm font-medium">Pedido</th>
-                           <th className="p-4 text-left text-sm font-medium">Fornecedor</th>
+                           <th className="p-4 text-left text-sm font-medium">Fornecedor/Freelancer</th>
                            <th className="p-4 text-left text-sm font-medium">Observações</th>
                            <th className="p-4 text-left text-sm font-medium">Usuário</th>
                            <th className="p-4 text-left text-sm font-medium">Valor</th>
@@ -1031,7 +1013,7 @@ const AccountsPayable = () => {
 
                           <div className="space-y-2">
                             <div className="flex justify-between">
-                              <span className="text-sm text-muted-foreground">Freelancer:</span>
+                              <span className="text-sm text-muted-foreground">Fornecedor/Freelancer:</span>
                               <span className="text-sm font-medium">
                                 {title.customer_name} {title.customer_lastname || ''}
                               </span>

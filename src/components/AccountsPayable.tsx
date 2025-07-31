@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -37,6 +39,19 @@ interface Freelancer {
   email: string;
 }
 
+interface Contact {
+  id: string;
+  name: string;
+  lastname: string;
+  email: string;
+  company?: string;
+}
+
+interface PaymentType {
+  id: string;
+  name: string;
+}
+
 interface Bank {
   id: string;
   name: string;
@@ -57,26 +72,35 @@ const AccountsPayable = () => {
   const { toast } = useToast();
   const [titles, setTitles] = useState<PayableTitle[]>([]);
   const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   
   // Filtros
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [filterType, setFilterType] = useState<'supplier' | 'freelancer'>('supplier');
   const [selectedFreelancer, setSelectedFreelancer] = useState('');
+  const [selectedContact, setSelectedContact] = useState('');
+  const [selectedPaymentType, setSelectedPaymentType] = useState('');
   const [freelancerSearch, setFreelancerSearch] = useState('');
+  const [contactSearch, setContactSearch] = useState('');
   const [debouncedFreelancerSearch] = useDebounce(freelancerSearch, 500);
+  const [debouncedContactSearch] = useDebounce(contactSearch, 500);
   const [freelancerLoading, setFreelancerLoading] = useState(false);
+  const [contactLoading, setContactLoading] = useState(false);
   const [reprocessingLoading, setReprocessingLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
-  // Ref para o campo de pesquisa do freelancer
+  // Ref para os campos de pesquisa
   const freelancerSearchRef = useRef<HTMLInputElement>(null);
+  const contactSearchRef = useRef<HTMLInputElement>(null);
 
   // Seleção e paginação
   const [selectedTitles, setSelectedTitles] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(100);
   const [totalTitles, setTotalTitles] = useState(0);
   
   const [filteredTitles, setFilteredTitles] = useState<PayableTitle[]>([]);
@@ -171,8 +195,46 @@ const AccountsPayable = () => {
     }
   };
 
+  const fetchContacts = async (searchTerm?: string) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setContacts([]);
+      return;
+    }
+    
+    setContactLoading(true);
+    try {
+      const response = await callAPI('contacts/paginate', { searchTerm });
+      setContacts(response || []);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar fornecedores",
+        description: "Não foi possível carregar a lista de fornecedores.",
+        variant: "destructive"
+      });
+    } finally {
+      setContactLoading(false);
+    }
+  };
+
+  const fetchPaymentTypes = async () => {
+    try {
+      const response = await callAPI('categories/payments');
+      setPaymentTypes(response || []);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar tipos de pagamento",
+        description: "Não foi possível carregar a lista de tipos de pagamento.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const fetchTitles = async () => {
     if (!startDate || !endDate) return;
+    
+    // Limpar tabela imediatamente
+    setTitles([]);
+    setFilteredTitles([]);
     
     setLoading(true);
     try {
@@ -183,9 +245,16 @@ const AccountsPayable = () => {
         end_date: endDate
       };
 
-      // Only add customer_id if a specific freelancer is selected
-      if (selectedFreelancer) {
+      // Add customer_id based on filter type and selection
+      if (filterType === 'freelancer' && selectedFreelancer) {
         requestData.customer_id = selectedFreelancer;
+      } else if (filterType === 'supplier' && selectedContact) {
+        requestData.customer_id = selectedContact;
+      }
+
+      // Add payment type filter if selected
+      if (selectedPaymentType) {
+        requestData.doc_type = selectedPaymentType;
       }
 
       const response = await callAPI('account_trans/paginate_apr', requestData);
@@ -246,12 +315,17 @@ const AccountsPayable = () => {
   // Load initial data
   useEffect(() => {
     fetchBanks();
+    fetchPaymentTypes();
   }, []);
 
-  // Debounced freelancer search
+  // Debounced searches
   useEffect(() => {
     fetchFreelancers(debouncedFreelancerSearch);
   }, [debouncedFreelancerSearch]);
+
+  useEffect(() => {
+    fetchContacts(debouncedContactSearch);
+  }, [debouncedContactSearch]);
 
   // Load titles when page or items per page change
   useEffect(() => {
@@ -267,7 +341,7 @@ const AccountsPayable = () => {
     }
   }, [activeTab]);
 
-  // Manter foco no campo de pesquisa após atualização da lista de freelancers
+  // Manter foco nos campos de pesquisa após atualização das listas
   useEffect(() => {
     if (freelancers.length > 0 && !freelancerLoading && freelancerSearch.length >= 2) {
       setTimeout(() => {
@@ -276,10 +350,32 @@ const AccountsPayable = () => {
     }
   }, [freelancers, freelancerLoading, freelancerSearch]);
 
+  useEffect(() => {
+    if (contacts.length > 0 && !contactLoading && contactSearch.length >= 2) {
+      setTimeout(() => {
+        contactSearchRef.current?.focus();
+      }, 10);
+    }
+  }, [contacts, contactLoading, contactSearch]);
+
+  // Reset selections when filter type changes
+  useEffect(() => {
+    setSelectedFreelancer('');
+    setSelectedContact('');
+    setFreelancerSearch('');
+    setContactSearch('');
+    setFreelancers([]);
+    setContacts([]);
+  }, [filterType]);
+
 
   // Filtros
   const filteredFreelancers = freelancers.filter(f => 
     `${f.name} ${f.lastname}`.toLowerCase().includes(freelancerSearch.toLowerCase())
+  );
+
+  const filteredContacts = contacts.filter(c => 
+    `${c.name} ${c.lastname || ''} ${c.company || ''}`.toLowerCase().includes(contactSearch.toLowerCase())
   );
 
   // Paginação usando dados da API
@@ -524,111 +620,247 @@ const AccountsPayable = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Data Inicial *</label>
-                      <Input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        required
-                        className="w-full"
-                      />
+                  <div className="space-y-4">
+                    {/* Primeira linha - Datas */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Data Inicial *</label>
+                        <Input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          required
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Data Final *</label>
+                        <Input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          required
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Tipo de Pagamento</label>
+                        <Select value={selectedPaymentType} onValueChange={setSelectedPaymentType}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                          <SelectContent className="z-50 max-h-[300px] overflow-y-auto bg-popover">
+                            <SelectItem value="">Todos os tipos</SelectItem>
+                            {paymentTypes.map(type => (
+                              <SelectItem key={type.id} value={type.id}>
+                                {type.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Itens por página</label>
+                        <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                          setItemsPerPage(Number(value));
+                          setCurrentPage(1);
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="z-50 bg-popover">
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                            <SelectItem value="150">150</SelectItem>
+                            <SelectItem value="200">200</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Data Final *</label>
-                      <Input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        required
-                        className="w-full"
-                      />
-                    </div>
+                    {/* Segunda linha - Filtro por Fornecedor/Freelancer */}
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-4">
+                        <label className="text-sm font-medium">Filtrar por:</label>
+                        <RadioGroup 
+                          value={filterType} 
+                          onValueChange={(value: 'supplier' | 'freelancer') => setFilterType(value)}
+                          className="flex items-center space-x-4"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="supplier" id="supplier" />
+                            <Label htmlFor="supplier" className="text-sm cursor-pointer">Fornecedor</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="freelancer" id="freelancer" />
+                            <Label htmlFor="freelancer" className="text-sm cursor-pointer">Freelancer</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
 
-                     <div>
-                       <label className="text-sm font-medium mb-2 block">Freelancer</label>
-                       <div className="flex items-center gap-2">
+                      {/* Select de Fornecedor */}
+                      {filterType === 'supplier' && (
+                        <div className="flex items-center gap-2">
                           <Select 
-                           value={selectedFreelancer} 
-                           onValueChange={(value) => {
-                             setSelectedFreelancer(value);
-                             // Don't trigger fetchTitles here automatically
-                           }}
-                         >
-                           <SelectTrigger data-freelancer-trigger="true" className="flex-1">
-                             <SelectValue placeholder="Selecione um freelancer" />
-                           </SelectTrigger>
-                           <SelectContent 
-                             autoFocus={false}
-                             className="z-50 max-h-[300px] overflow-y-auto bg-popover"
-                             position="popper"
-                             sideOffset={5}
-                           >
-                             <div className="p-2 sticky top-0 bg-popover border-b z-10">
-                               <Input
-                                 ref={freelancerSearchRef}
-                                 placeholder="Digite ao menos 2 caracteres..."
-                                 value={freelancerSearch}
-                                 onChange={(e) => setFreelancerSearch(e.target.value)}
-                                 className="w-full"
-                                 autoFocus
-                                 onKeyDown={(e) => {
-                                   e.stopPropagation();
-                                   // Prevent arrow keys from navigating to list items
-                                   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                                     e.preventDefault();
-                                   }
-                                 }}
-                                 onClick={(e) => e.stopPropagation()}
-                               />
-                             </div>
-                             
-                             {freelancerLoading ? (
-                               <div className="flex items-center justify-center p-4">
-                                 <Loader2 className="h-4 w-4 animate-spin" />
-                               </div>
-                             ) : freelancers.length > 0 ? (
-                               freelancers.map(freelancer => (
-                                 <SelectItem 
-                                   key={freelancer.id} 
-                                   value={freelancer.id}
-                                   className="max-w-full truncate"
-                                 >
-                                   <span className="truncate">{freelancer.name} {freelancer.lastname}</span>
-                                 </SelectItem>
-                               ))
-                             ) : freelancerSearch.length >= 2 ? (
-                               <div className="p-4 text-center text-muted-foreground text-sm">
-                                 Nenhum freelancer encontrado
-                               </div>
-                             ) : (
-                               <div className="p-4 text-center text-muted-foreground text-sm">
-                                 Digite ao menos 2 caracteres para pesquisar
-                               </div>
-                             )}
-                           </SelectContent>
-                         </Select>
-                         
-                         {selectedFreelancer && (
-                           <Button
-                             variant="ghost"
-                             size="sm"
-                             onClick={() => {
-                               setSelectedFreelancer('');
-                               setFreelancerSearch('');
-                             }}
-                             className="h-10 w-10 p-0 flex-shrink-0"
-                             title="Limpar seleção"
-                           >
-                             <X className="h-4 w-4" />
-                           </Button>
-                         )}
-                       </div>
-                     </div>
+                            value={selectedContact} 
+                            onValueChange={(value) => setSelectedContact(value)}
+                          >
+                            <SelectTrigger data-contact-trigger="true" className="flex-1">
+                              <SelectValue placeholder="Selecione um fornecedor" />
+                            </SelectTrigger>
+                            <SelectContent 
+                              autoFocus={false}
+                              className="z-50 max-h-[300px] overflow-y-auto bg-popover"
+                              position="popper"
+                              sideOffset={5}
+                            >
+                              <div className="p-2 sticky top-0 bg-popover border-b z-10">
+                                <Input
+                                  ref={contactSearchRef}
+                                  placeholder="Digite ao menos 2 caracteres..."
+                                  value={contactSearch}
+                                  onChange={(e) => setContactSearch(e.target.value)}
+                                  className="w-full"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    e.stopPropagation();
+                                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                                      e.preventDefault();
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                              
+                              {contactLoading ? (
+                                <div className="flex items-center justify-center p-4">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                </div>
+                              ) : contacts.length > 0 ? (
+                                contacts.map(contact => (
+                                  <SelectItem 
+                                    key={contact.id} 
+                                    value={contact.id}
+                                    className="max-w-full truncate"
+                                  >
+                                    <span className="truncate">
+                                      {contact.name} {contact.lastname} {contact.company && `- ${contact.company}`}
+                                    </span>
+                                  </SelectItem>
+                                ))
+                              ) : contactSearch.length >= 2 ? (
+                                <div className="p-4 text-center text-muted-foreground text-sm">
+                                  Nenhum fornecedor encontrado
+                                </div>
+                              ) : (
+                                <div className="p-4 text-center text-muted-foreground text-sm">
+                                  Digite ao menos 2 caracteres para pesquisar
+                                </div>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          
+                          {selectedContact && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedContact('');
+                                setContactSearch('');
+                              }}
+                              className="h-10 w-10 p-0 flex-shrink-0"
+                              title="Limpar seleção"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
 
-                    <div className="flex items-end gap-2">
+                      {/* Select de Freelancer */}
+                      {filterType === 'freelancer' && (
+                        <div className="flex items-center gap-2">
+                          <Select 
+                            value={selectedFreelancer} 
+                            onValueChange={(value) => setSelectedFreelancer(value)}
+                          >
+                            <SelectTrigger data-freelancer-trigger="true" className="flex-1">
+                              <SelectValue placeholder="Selecione um freelancer" />
+                            </SelectTrigger>
+                            <SelectContent 
+                              autoFocus={false}
+                              className="z-50 max-h-[300px] overflow-y-auto bg-popover"
+                              position="popper"
+                              sideOffset={5}
+                            >
+                              <div className="p-2 sticky top-0 bg-popover border-b z-10">
+                                <Input
+                                  ref={freelancerSearchRef}
+                                  placeholder="Digite ao menos 2 caracteres..."
+                                  value={freelancerSearch}
+                                  onChange={(e) => setFreelancerSearch(e.target.value)}
+                                  className="w-full"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    e.stopPropagation();
+                                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                                      e.preventDefault();
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                              
+                              {freelancerLoading ? (
+                                <div className="flex items-center justify-center p-4">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                </div>
+                              ) : freelancers.length > 0 ? (
+                                freelancers.map(freelancer => (
+                                  <SelectItem 
+                                    key={freelancer.id} 
+                                    value={freelancer.id}
+                                    className="max-w-full truncate"
+                                  >
+                                    <span className="truncate">{freelancer.name} {freelancer.lastname}</span>
+                                  </SelectItem>
+                                ))
+                              ) : freelancerSearch.length >= 2 ? (
+                                <div className="p-4 text-center text-muted-foreground text-sm">
+                                  Nenhum freelancer encontrado
+                                </div>
+                              ) : (
+                                <div className="p-4 text-center text-muted-foreground text-sm">
+                                  Digite ao menos 2 caracteres para pesquisar
+                                </div>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          
+                          {selectedFreelancer && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedFreelancer('');
+                                setFreelancerSearch('');
+                              }}
+                              className="h-10 w-10 p-0 flex-shrink-0"
+                              title="Limpar seleção"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Terceira linha - Botões */}
+                    <div className="flex items-end gap-2 pt-2">
                       <Button 
                         onClick={handleFilter}
                         disabled={isFilterDisabled}
@@ -648,7 +880,6 @@ const AccountsPayable = () => {
                         <CreditCard className="h-4 w-4 mr-2" />
                         Baixar ({selectedTitles.size})
                       </Button>
-
                     </div>
                   </div>
                 </CardContent>
@@ -660,49 +891,53 @@ const AccountsPayable = () => {
 
               {/* Tabela / Cards */}
               <Card className="shadow-financial animate-fade-in">
-                <CardContent className="p-0">
-                  {loading && (
-                    <div className="flex items-center justify-center p-8">
-                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                      <span>Carregando títulos...</span>
-                    </div>
-                  )}
-                  {/* Desktop Table */}
-                  <div className={`hidden lg:block overflow-x-auto ${loading ? 'opacity-50' : ''}`}>
-                    <table className="w-full">
-                      <thead className="bg-muted/50 border-b">
-                        <tr>
-                          <th className="p-4 text-left">
-                            <Checkbox
-                              checked={selectedTitles.size === paginatedTitles.length && paginatedTitles.length > 0}
-                              onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                            />
-                          </th>
-                          <th className="p-4 text-left text-sm font-medium">Emissão</th>
-                          <th className="p-4 text-left text-sm font-medium">Vencimento</th>
-                          <th className="p-4 text-left text-sm font-medium">Doc</th>
-                          <th className="p-4 text-left text-sm font-medium">Tipo</th>
-                          <th className="p-4 text-left text-sm font-medium">Pedido</th>
-                          <th className="p-4 text-left text-sm font-medium">Fornecedor</th>
-                          <th className="p-4 text-left text-sm font-medium">Observações</th>
-                          <th className="p-4 text-left text-sm font-medium">Usuário</th>
-                          <th className="p-4 text-left text-sm font-medium">Valor</th>
-                          <th className="p-4 text-left text-sm font-medium">Ação</th>
-                        </tr>
-                      </thead>
-                       <tbody>
-                         {(() => {
-                           const validTitles = paginatedTitles.filter(title => title.id && title.amount && !isNaN(parseFloat(title.amount)));
-                           if (validTitles.length === 0 && !loading) {
-                             return (
-                               <tr>
-                                 <td colSpan={11} className="p-8 text-center text-muted-foreground">
-                                   Nenhum título encontrado com os filtros selecionados.
-                                 </td>
-                               </tr>
-                             );
-                           }
-                           return validTitles.map((title) => (
+                 <CardContent className="p-0">
+                   {/* Desktop Table */}
+                   <div className="hidden lg:block overflow-x-auto">
+                     <table className="w-full">
+                       <thead className="bg-muted/50 border-b">
+                         <tr>
+                           <th className="p-4 text-left">
+                             <Checkbox
+                               checked={selectedTitles.size === paginatedTitles.length && paginatedTitles.length > 0}
+                               onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                               disabled={loading}
+                             />
+                           </th>
+                           <th className="p-4 text-left text-sm font-medium">Emissão</th>
+                           <th className="p-4 text-left text-sm font-medium">Vencimento</th>
+                           <th className="p-4 text-left text-sm font-medium">Doc</th>
+                           <th className="p-4 text-left text-sm font-medium">Tipo</th>
+                           <th className="p-4 text-left text-sm font-medium">Pedido</th>
+                           <th className="p-4 text-left text-sm font-medium">Fornecedor</th>
+                           <th className="p-4 text-left text-sm font-medium">Observações</th>
+                           <th className="p-4 text-left text-sm font-medium">Usuário</th>
+                           <th className="p-4 text-left text-sm font-medium">Valor</th>
+                           <th className="p-4 text-left text-sm font-medium">Ação</th>
+                         </tr>
+                       </thead>
+                        <tbody>
+                          {loading ? (
+                            <tr>
+                              <td colSpan={11} className="p-8 text-center">
+                                <div className="flex items-center justify-center">
+                                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                  <span>Carregando títulos...</span>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (() => {
+                            const validTitles = paginatedTitles.filter(title => title.id && title.amount && !isNaN(parseFloat(title.amount)));
+                            if (validTitles.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan={11} className="p-8 text-center text-muted-foreground">
+                                    Nenhum título encontrado com os filtros selecionados.
+                                  </td>
+                                </tr>
+                              );
+                            }
+                            return validTitles.map((title) => (
                           <tr key={title.id} className="border-b hover:bg-muted/20 transition-colors">
                             <td className="p-4">
                               <Checkbox
@@ -866,6 +1101,8 @@ const AccountsPayable = () => {
                             <SelectItem value="25">25</SelectItem>
                             <SelectItem value="50">50</SelectItem>
                             <SelectItem value="100">100</SelectItem>
+                            <SelectItem value="150">150</SelectItem>
+                            <SelectItem value="200">200</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

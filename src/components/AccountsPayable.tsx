@@ -866,7 +866,7 @@ const AccountsPayable = () => {
                     </div>
 
                     {/* Desktop: layout em linha única */}
-                    <div className="hidden md:flex items-end justify-between gap-4">
+                    <div className="hidden md:flex items-end gap-4">
                       {/* Lado esquerdo: Radio buttons */}
                       <div className="flex items-center gap-6">
                         <RadioGroup 
@@ -885,8 +885,8 @@ const AccountsPayable = () => {
                         </RadioGroup>
                       </div>
 
-                      {/* Centro: Select com largura fixa */}
-                      <div className="flex items-center gap-2" style={{ minWidth: '200px', maxWidth: '300px' }}>
+                      {/* Centro: Select expandido */}
+                      <div className="flex-1 flex items-center gap-2 mx-4">
                         {filterType === 'supplier' && (
                           <>
                             <Select 

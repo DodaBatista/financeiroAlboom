@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, CheckCircle, Clock, CreditCard, Loader2, RefreshCw, RotateCcw, Search, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, CreditCard, Download, Loader2, RefreshCw, RotateCcw, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 
@@ -664,8 +664,9 @@ const AccountsPayable = () => {
 
                     </div>
 
-                    {/* Linha 2: Entidade e seleção */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Linha 2 e 3: Entidade, seleção e ações */}
+                    {/* Mobile: layout empilhado */}
+                    <div className="block md:hidden space-y-4">
                       <div>
                         <label className="text-sm font-medium mb-2 block">Tipo de Entidade</label>
                         <RadioGroup 
@@ -674,17 +675,17 @@ const AccountsPayable = () => {
                           className="flex flex-row gap-6 mt-2"
                         >
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="supplier" id="supplier" />
-                            <Label htmlFor="supplier" className="text-sm cursor-pointer">Fornecedor</Label>
+                            <RadioGroupItem value="supplier" id="supplier-mobile" />
+                            <Label htmlFor="supplier-mobile" className="text-sm cursor-pointer">Fornecedor</Label>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="freelancer" id="freelancer" />
-                            <Label htmlFor="freelancer" className="text-sm cursor-pointer">Freelancer</Label>
+                            <RadioGroupItem value="freelancer" id="freelancer-mobile" />
+                            <Label htmlFor="freelancer-mobile" className="text-sm cursor-pointer">Freelancer</Label>
                           </div>
                         </RadioGroup>
                       </div>
 
-                      {/* Select de Fornecedor */}
+                      {/* Select de Fornecedor - Mobile */}
                       {filterType === 'supplier' && (
                         <div className="flex items-center gap-2">
                           <Select 
@@ -763,7 +764,7 @@ const AccountsPayable = () => {
                         </div>
                       )}
 
-                      {/* Select de Freelancer */}
+                      {/* Select de Freelancer - Mobile */}
                       {filterType === 'freelancer' && (
                         <div className="flex items-center gap-2">
                           <Select 
@@ -839,29 +840,226 @@ const AccountsPayable = () => {
                           )}
                         </div>
                       )}
+
+                      {/* Ações - Mobile */}
+                      <div className="flex flex-col gap-4">
+                        <Button 
+                          onClick={handleFilter}
+                          disabled={isFilterDisabled}
+                          className="w-full"
+                          variant="default"
+                        >
+                          <Search className="h-4 w-4 mr-2" />
+                          Filtrar
+                        </Button>
+                        
+                        <Button 
+                          variant="payment"
+                          onClick={handleMultiplePayment}
+                          disabled={selectedTitles.size === 0}
+                          className="w-full"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Baixar selecionados ({selectedTitles.size})
+                        </Button>
+                      </div>
                     </div>
 
-                    {/* Linha 3: Ações */}
-                    <div className="flex flex-col sm:flex-row gap-4 pt-2">
-                      <Button 
-                        onClick={handleFilter}
-                        disabled={isFilterDisabled}
-                        className="flex-1"
-                        variant="default"
-                      >
-                        <Search className="h-4 w-4 mr-2" />
-                        Filtrar
-                      </Button>
-                      
-                      <Button 
-                        variant="payment"
-                        onClick={handleMultiplePayment}
-                        disabled={selectedTitles.size === 0}
-                        className="flex-1"
-                      >
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Baixar ({selectedTitles.size})
-                      </Button>
+                    {/* Desktop: layout em linha única */}
+                    <div className="hidden md:flex items-end justify-between gap-4">
+                      {/* Lado esquerdo: Radio buttons */}
+                      <div className="flex items-center gap-6">
+                        <RadioGroup 
+                          value={filterType} 
+                          onValueChange={(value: 'supplier' | 'freelancer') => setFilterType(value)}
+                          className="flex flex-row gap-6"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="supplier" id="supplier-desktop" />
+                            <Label htmlFor="supplier-desktop" className="text-sm cursor-pointer">Fornecedor</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="freelancer" id="freelancer-desktop" />
+                            <Label htmlFor="freelancer-desktop" className="text-sm cursor-pointer">Freelancer</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      {/* Centro: Select com largura fixa */}
+                      <div className="flex items-center gap-2" style={{ minWidth: '200px', maxWidth: '300px' }}>
+                        {filterType === 'supplier' && (
+                          <>
+                            <Select 
+                              value={selectedContact} 
+                              onValueChange={(value) => setSelectedContact(value)}
+                            >
+                              <SelectTrigger data-contact-trigger="true" className="flex-1">
+                                <SelectValue placeholder="Selecione um fornecedor" />
+                              </SelectTrigger>
+                              <SelectContent 
+                                autoFocus={false}
+                                className="z-50 max-h-[300px] overflow-y-auto bg-popover"
+                                position="popper"
+                                sideOffset={5}
+                              >
+                                <div className="p-2 sticky top-0 bg-popover border-b z-10">
+                                  <Input
+                                    placeholder="Digite ao menos 2 caracteres..."
+                                    value={contactSearch}
+                                    onChange={(e) => setContactSearch(e.target.value)}
+                                    className="w-full"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      e.stopPropagation();
+                                      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                      }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                
+                                {contactLoading ? (
+                                  <div className="flex items-center justify-center p-4">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  </div>
+                                ) : contacts.length > 0 ? (
+                                  contacts.map(contact => (
+                                    <SelectItem 
+                                      key={contact.id} 
+                                      value={contact.id}
+                                      className="max-w-full truncate"
+                                    >
+                                      <span className="truncate">
+                                        {contact.name} {contact.lastname} {contact.company && `- ${contact.company}`}
+                                      </span>
+                                    </SelectItem>
+                                  ))
+                                ) : contactSearch.length >= 2 ? (
+                                  <div className="p-4 text-center text-muted-foreground text-sm">
+                                    Nenhum fornecedor encontrado
+                                  </div>
+                                ) : (
+                                  <div className="p-4 text-center text-muted-foreground text-sm">
+                                    Digite ao menos 2 caracteres para pesquisar
+                                  </div>
+                                )}
+                              </SelectContent>
+                            </Select>
+                            
+                            {selectedContact && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedContact('');
+                                  setContactSearch('');
+                                }}
+                                className="h-10 w-10 p-0 flex-shrink-0"
+                                title="Limpar seleção"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </>
+                        )}
+
+                        {filterType === 'freelancer' && (
+                          <>
+                            <Select 
+                              value={selectedFreelancer} 
+                              onValueChange={(value) => setSelectedFreelancer(value)}
+                            >
+                              <SelectTrigger data-freelancer-trigger="true" className="flex-1">
+                                <SelectValue placeholder="Selecione um freelancer" />
+                              </SelectTrigger>
+                              <SelectContent 
+                                autoFocus={false}
+                                className="z-50 max-h-[300px] overflow-y-auto bg-popover"
+                                position="popper"
+                                sideOffset={5}
+                              >
+                                <div className="p-2 sticky top-0 bg-popover border-b z-10">
+                                  <Input
+                                    placeholder="Digite ao menos 2 caracteres..."
+                                    value={freelancerSearch}
+                                    onChange={(e) => setFreelancerSearch(e.target.value)}
+                                    className="w-full"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      e.stopPropagation();
+                                      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                      }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                
+                                {freelancerLoading ? (
+                                  <div className="flex items-center justify-center p-4">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  </div>
+                                ) : freelancers.length > 0 ? (
+                                  freelancers.map(freelancer => (
+                                    <SelectItem 
+                                      key={freelancer.id} 
+                                      value={freelancer.id}
+                                      className="max-w-full truncate"
+                                    >
+                                      <span className="truncate">{freelancer.name} {freelancer.lastname}</span>
+                                    </SelectItem>
+                                  ))
+                                ) : freelancerSearch.length >= 2 ? (
+                                  <div className="p-4 text-center text-muted-foreground text-sm">
+                                    Nenhum freelancer encontrado
+                                  </div>
+                                ) : (
+                                  <div className="p-4 text-center text-muted-foreground text-sm">
+                                    Digite ao menos 2 caracteres para pesquisar
+                                  </div>
+                                )}
+                              </SelectContent>
+                            </Select>
+                            
+                            {selectedFreelancer && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedFreelancer('');
+                                  setFreelancerSearch('');
+                                }}
+                                className="h-10 w-10 p-0 flex-shrink-0"
+                                title="Limpar seleção"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Lado direito: Botões de ação */}
+                      <div className="flex items-center gap-4">
+                        <Button 
+                          onClick={handleFilter}
+                          disabled={isFilterDisabled}
+                          variant="default"
+                        >
+                          <Search className="h-4 w-4 mr-2" />
+                          Filtrar
+                        </Button>
+                        
+                        <Button 
+                          variant="payment"
+                          onClick={handleMultiplePayment}
+                          disabled={selectedTitles.size === 0}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Baixar ({selectedTitles.size})
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

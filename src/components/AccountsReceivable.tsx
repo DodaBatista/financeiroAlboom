@@ -66,8 +66,8 @@ const AccountsReceivable = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
-  const [selectedCustomer, setSelectedCustomer] = useState('');
-  const [selectedPaymentType, setSelectedPaymentType] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState('all');
+  const [selectedPaymentType, setSelectedPaymentType] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
@@ -163,8 +163,8 @@ const AccountsReceivable = () => {
         empresa: 'produtora7'
       };
 
-      if (selectedCustomer) payload.customer_id = selectedCustomer;
-      if (selectedPaymentType) payload.payment_type_id = selectedPaymentType;
+      if (selectedCustomer && selectedCustomer !== 'all') payload.customer_id = selectedCustomer;
+      if (selectedPaymentType && selectedPaymentType !== 'all') payload.payment_type_id = selectedPaymentType;
       if (startDate) payload.start_date = startDate;
       if (endDate) payload.end_date = endDate;
       if (sortConfig.field && sortConfig.direction) {
@@ -215,8 +215,8 @@ const AccountsReceivable = () => {
 
   const handleReset = () => {
     setSearchTerm('');
-    setSelectedCustomer('');
-    setSelectedPaymentType('');
+    setSelectedCustomer('all');
+    setSelectedPaymentType('all');
     setStartDate('');
     setEndDate('');
     setCurrentPage(1);
@@ -382,7 +382,7 @@ const AccountsReceivable = () => {
                           <SelectValue placeholder="Selecione o tipo" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todos os tipos</SelectItem>
+                          <SelectItem value="all">Todos os tipos</SelectItem>
                           {paymentTypes.map((type) => (
                             <SelectItem key={type.id} value={type.id}>
                               {type.name}
@@ -414,7 +414,7 @@ const AccountsReceivable = () => {
                           <SelectValue placeholder="Selecione o cliente" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todos os clientes</SelectItem>
+                          <SelectItem value="all">Todos os clientes</SelectItem>
                           {customers.map((customer) => (
                             <SelectItem key={customer.id} value={customer.id}>
                               {customer.name} {customer.lastname}

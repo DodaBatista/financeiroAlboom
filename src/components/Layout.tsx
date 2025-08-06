@@ -17,11 +17,11 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full overflow-x-hidden">
         <AppSidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           <Navbar />
-          <main className="flex-1 p-6 bg-background">
+          <main className="flex-1 p-6 bg-background overflow-x-auto">
             {children}
           </main>
         </div>

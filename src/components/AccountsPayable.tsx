@@ -92,6 +92,12 @@ const AccountsPayable = () => {
   const [contactLoading, setContactLoading] = useState(false);
   const [reprocessingLoading, setReprocessingLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: 'ASC' | 'DESC';
+  } | null>(null);
 
   // Ref para os campos de pesquisa
   const freelancerSearchRef = useRef<HTMLInputElement>(null);
@@ -144,6 +150,7 @@ const AccountsPayable = () => {
         },
         body: JSON.stringify({
           endpoint,
+          empresa: 'produtora7',
           ...data
         })
       });
@@ -255,6 +262,12 @@ const AccountsPayable = () => {
       // Add payment type filter if selected and not "all"
       if (selectedPaymentType && selectedPaymentType !== 'all') {
         requestData.doc_type = selectedPaymentType;
+      }
+
+      // Add sorting parameters
+      if (sortConfig) {
+        requestData.sortBy = sortConfig.key;
+        requestData.sortDir = sortConfig.direction;
       }
 
       const response = await callAPI('account_trans/paginate_apr', requestData);
@@ -386,6 +399,36 @@ const AccountsPayable = () => {
     setCurrentPage(1);
     setSelectedTitles(new Set()); // Clear selected titles when filtering
     fetchTitles(); // Fetch from API with current filters
+  };
+
+  const handleSort = (columnKey: string) => {
+    let direction: 'ASC' | 'DESC' | null = 'ASC';
+    
+    if (sortConfig && sortConfig.key === columnKey) {
+      if (sortConfig.direction === 'ASC') {
+        direction = 'DESC';
+      } else {
+        direction = null; // Remove sorting
+      }
+    }
+    
+    if (direction) {
+      setSortConfig({ key: columnKey, direction });
+    } else {
+      setSortConfig(null);
+    }
+    
+    setCurrentPage(1);
+    setTimeout(() => fetchTitles(), 100); // Small delay to ensure state is updated
+  };
+
+  const getSortIcon = (columnKey: string) => {
+    if (!sortConfig || sortConfig.key !== columnKey) {
+      return null;
+    }
+    return sortConfig.direction === 'ASC' ? 
+      <ChevronUp className="inline w-4 h-4 ml-1" /> : 
+      <ChevronDown className="inline w-4 h-4 ml-1" />;
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -1075,27 +1118,45 @@ const AccountsPayable = () => {
                    {/* Desktop Table */}
                    <div className="hidden lg:block overflow-x-auto">
                      <table className="w-full">
-                       <thead className="bg-muted/50 border-b">
-                         <tr>
-                           <th className="p-4 text-left">
-                             <Checkbox
-                               checked={selectedTitles.size === paginatedTitles.length && paginatedTitles.length > 0}
-                               onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                               disabled={loading}
-                             />
-                           </th>
-                           <th className="p-4 text-left text-sm font-medium">Emissão</th>
-                           <th className="p-4 text-left text-sm font-medium">Vencimento</th>
-                           <th className="p-4 text-left text-sm font-medium">Doc</th>
-                           <th className="p-4 text-left text-sm font-medium">Tipo</th>
-                           <th className="p-4 text-left text-sm font-medium">Pedido</th>
-                           <th className="p-4 text-left text-sm font-medium">Fornecedor/Freelancer</th>
-                           <th className="p-4 text-left text-sm font-medium">Observações</th>
-                           <th className="p-4 text-left text-sm font-medium">Usuário</th>
-                           <th className="p-4 text-left text-sm font-medium">Valor</th>
-                           <th className="p-4 text-left text-sm font-medium">Ação</th>
-                         </tr>
-                       </thead>
+                        <thead className="bg-muted/50 border-b">
+                          <tr>
+                            <th className="p-4 text-left">
+                              <Checkbox
+                                checked={selectedTitles.size === paginatedTitles.length && paginatedTitles.length > 0}
+                                onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                                disabled={loading}
+                              />
+                            </th>
+                            <th className="p-4 text-left text-sm font-medium cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleSort('add_date')}>
+                              Emissão {getSortIcon('add_date')}
+                            </th>
+                            <th className="p-4 text-left text-sm font-medium cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleSort('due_date')}>
+                              Vencimento {getSortIcon('due_date')}
+                            </th>
+                            <th className="p-4 text-left text-sm font-medium cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleSort('document_number')}>
+                              Doc {getSortIcon('document_number')}
+                            </th>
+                            <th className="p-4 text-left text-sm font-medium cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleSort('document_type_name')}>
+                              Tipo {getSortIcon('document_type_name')}
+                            </th>
+                            <th className="p-4 text-left text-sm font-medium cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleSort('order_id')}>
+                              Pedido {getSortIcon('order_id')}
+                            </th>
+                            <th className="p-4 text-left text-sm font-medium cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleSort('customer_name')}>
+                              Fornecedor/Freelancer {getSortIcon('customer_name')}
+                            </th>
+                            <th className="p-4 text-left text-sm font-medium cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleSort('memo')}>
+                              Observações {getSortIcon('memo')}
+                            </th>
+                            <th className="p-4 text-left text-sm font-medium cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleSort('user_name')}>
+                              Usuário {getSortIcon('user_name')}
+                            </th>
+                            <th className="p-4 text-left text-sm font-medium cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleSort('amount')}>
+                              Valor {getSortIcon('amount')}
+                            </th>
+                            <th className="p-4 text-left text-sm font-medium">Ação</th>
+                          </tr>
+                        </thead>
                         <tbody>
                           {loading ? (
                             <tr>

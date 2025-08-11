@@ -635,15 +635,16 @@ const AccountsPayable = () => {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background p-4 md:p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
-              Contas a Pagar
-            </h1>
-            <p className="text-muted-foreground">Sistema de gestão de títulos a pagar</p>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <h1 className="text-2xl font-bold text-black">Contas a Pagar</h1>
           </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -730,11 +731,13 @@ const AccountsPayable = () => {
 
                       {/* Select de Fornecedor - Mobile */}
                       {filterType === 'supplier' && (
-                        <div className="flex items-center gap-2">
-                          <Select 
-                            value={selectedContact} 
-                            onValueChange={(value) => setSelectedContact(value)}
-                          >
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Fornecedor</label>
+                          <div className="flex items-center gap-2">
+                            <Select 
+                              value={selectedContact} 
+                              onValueChange={(value) => setSelectedContact(value)}
+                            >
                             <SelectTrigger data-contact-trigger="true" className="flex-1">
                               <SelectValue placeholder="Selecione um fornecedor" />
                             </SelectTrigger>
@@ -802,14 +805,17 @@ const AccountsPayable = () => {
                               title="Limpar seleção"
                             >
                               <X className="h-4 w-4" />
-                            </Button>
-                          )}
+                             </Button>
+                           )}
+                          </div>
                         </div>
                       )}
 
                       {/* Select de Freelancer - Mobile */}
                       {filterType === 'freelancer' && (
-                        <div className="flex items-center gap-2">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Freelancer</label>
+                          <div className="flex items-center gap-2">
                           <Select 
                             value={selectedFreelancer} 
                             onValueChange={(value) => setSelectedFreelancer(value)}
@@ -879,8 +885,9 @@ const AccountsPayable = () => {
                               title="Limpar seleção"
                             >
                               <X className="h-4 w-4" />
-                            </Button>
-                          )}
+                             </Button>
+                           )}
+                          </div>
                         </div>
                       )}
 
@@ -929,10 +936,12 @@ const AccountsPayable = () => {
                       </div>
 
                       {/* Centro: Select expandido */}
-                      <div className="flex-1 flex items-center gap-2 mx-4">
+                      <div className="flex-1 mx-4">
                         {filterType === 'supplier' && (
-                          <>
-                            <Select 
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">Fornecedor</label>
+                            <div className="flex items-center gap-2">
+                              <Select
                               value={selectedContact} 
                               onValueChange={(value) => setSelectedContact(value)}
                             >
@@ -1003,13 +1012,16 @@ const AccountsPayable = () => {
                               >
                                 <X className="h-4 w-4" />
                               </Button>
-                            )}
-                          </>
+                             )}
+                            </div>
+                          </div>
                         )}
 
                         {filterType === 'freelancer' && (
-                          <>
-                            <Select 
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">Freelancer</label>
+                            <div className="flex items-center gap-2">
+                              <Select
                               value={selectedFreelancer} 
                               onValueChange={(value) => setSelectedFreelancer(value)}
                             >
@@ -1078,8 +1090,9 @@ const AccountsPayable = () => {
                               >
                                 <X className="h-4 w-4" />
                               </Button>
-                            )}
-                          </>
+                             )}
+                            </div>
+                          </div>
                         )}
                       </div>
 

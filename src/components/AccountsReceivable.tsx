@@ -643,7 +643,9 @@ const AccountsReceivable = () => {
                     {/* Mobile: layout empilhado */}
                     <div className="block md:hidden space-y-4">
                       {/* Select de Cliente - Mobile */}
-                      <div className="flex items-center gap-2">
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Cliente</label>
+                        <div className="flex items-center gap-2">
                         <Select 
                           value={selectedCustomer} 
                           onValueChange={(value) => setSelectedCustomer(value)}
@@ -716,7 +718,8 @@ const AccountsReceivable = () => {
                           >
                             <X className="h-4 w-4" />
                           </Button>
-                        )}
+                         )}
+                        </div>
                       </div>
 
                       {/* Ações - Mobile */}
@@ -746,9 +749,10 @@ const AccountsReceivable = () => {
                     {/* Desktop: layout em linha única */}
                     <div className="hidden md:flex items-end gap-4">
                       {/* Centro: Select expandido */}
-                      <div className="flex-1 flex items-center gap-2 mx-4">
-                        <>
-                          <Select 
+                      <div className="flex-1 mx-4">
+                        <label className="text-sm font-medium mb-2 block">Cliente</label>
+                        <div className="flex items-center gap-2">
+                          <Select
                             value={selectedCustomer} 
                             onValueChange={(value) => setSelectedCustomer(value)}
                           >
@@ -819,8 +823,8 @@ const AccountsReceivable = () => {
                             >
                               <X className="h-4 w-4" />
                             </Button>
-                          )}
-                        </>
+                           )}
+                        </div>
                       </div>
 
                       {/* Lado direito: Botões de ação */}

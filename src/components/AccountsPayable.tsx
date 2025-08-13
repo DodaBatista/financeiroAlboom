@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, CheckCircle, Clock, CreditCard, Download, Loader2, RefreshCw, RotateCcw, Search, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Clock, CreditCard, Download, Loader2, RefreshCw, RotateCcw, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 
@@ -151,6 +151,7 @@ const AccountsPayable = () => {
         body: JSON.stringify({
           endpoint,
           empresa: 'produtora7',
+          type: 'ap',
           ...data
         })
       });
@@ -932,7 +933,7 @@ const AccountsPayable = () => {
                       </div>
 
                       {/* Centro: Select expandido */}
-                      <div className="flex-1 mx-4">
+                      <div className="flex-1">
                         {filterType === 'supplier' && (
                           <div>
                             <label className="text-sm font-medium mb-2 block">Fornecedor</label>

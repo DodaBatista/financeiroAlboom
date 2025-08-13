@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, CheckCircle, Clock, CreditCard, Download, Loader2, RefreshCw, RotateCcw, Search, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Clock, CreditCard, Download, Loader2, RefreshCw, RotateCcw, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 
@@ -134,7 +134,7 @@ const AccountsReceivable = () => {
         body: JSON.stringify({
           endpoint,
           empresa: 'produtora7',
-          type: 'ar', // Always include type: "ar" for accounts receivable
+          type: 'ar',
           ...data
         })
       });
@@ -749,7 +749,7 @@ const AccountsReceivable = () => {
                     {/* Desktop: layout em linha única */}
                     <div className="hidden md:flex items-end gap-4">
                       {/* Centro: Select expandido */}
-                      <div className="flex-1 mx-4">
+                      <div className="flex-1">
                         <label className="text-sm font-medium mb-2 block">Cliente</label>
                         <div className="flex items-center gap-2">
                           <Select

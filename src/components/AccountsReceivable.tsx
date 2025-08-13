@@ -13,7 +13,7 @@ import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Clock, CreditCard, Do
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 
-const API_BASE_URL = 'https://fluxo.riapp.app/webhook/finance';
+import { callAPI, getProcessedPayments } from '@/utils/api';
 
 interface ReceivableTitle {
   id: string;
@@ -123,36 +123,11 @@ const AccountsReceivable = () => {
   const [selectedBank, setSelectedBank] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
 
-  // API Functions
-  const callAPI = async (endpoint: string, data: any = {}) => {
-    try {
-      const response = await fetch(API_BASE_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          endpoint,
-          empresa: 'produtora7',
-          type: 'ar',
-          ...data
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`API call failed for ${endpoint}:`, error);
-      throw error;
-    }
-  };
+  // API Functions - now using centralized API utility with authentication
 
   const fetchBanks = async () => {
     try {
-      const response = await callAPI('banks/paginate');
+      const response = await callAPI('banks/paginate', { type: 'ar' });
       // Filter only active banks
       const activeBanks = (response || []).filter((bank: Bank) => bank.active === "1");
       setBanks(activeBanks);
@@ -173,7 +148,7 @@ const AccountsReceivable = () => {
     
     setCustomerLoading(true);
     try {
-      const response = await callAPI('users/paginate', { searchTerm });
+      const response = await callAPI('users/paginate', { searchTerm, type: 'ar' });
       setCustomers(response || []);
     } catch (error) {
       toast({
@@ -188,7 +163,7 @@ const AccountsReceivable = () => {
 
   const fetchPaymentTypes = async () => {
     try {
-      const response = await callAPI('categories/payments');
+      const response = await callAPI('categories/payments', { type: 'ar' });
       setPaymentTypes(response || []);
     } catch (error) {
       toast({
@@ -256,7 +231,7 @@ const AccountsReceivable = () => {
   const fetchPaymentRequests = async () => {
     setRequestsLoading(true);
     try {
-      const response = await callAPI('processados', { type: 'ar' });
+      const response = await getProcessedPayments('ar');
       setPaymentRequests(response || []);
     } catch (error) {
       toast({

@@ -1,0 +1,159 @@
+import { getCompanyFromUrl } from './company';
+
+const API_BASE_URL = 'https://fluxo.riapp.app/webhook/finance';
+
+interface AuthTokens {
+  token: string;
+  tokenAlboom: string;
+}
+
+/**
+ * Get stored authentication tokens
+ */
+const getAuthTokens = (): AuthTokens | null => {
+  const storedTokens = localStorage.getItem('authTokens');
+  if (!storedTokens) return null;
+  
+  try {
+    return JSON.parse(storedTokens);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Store authentication tokens
+ */
+export const setAuthTokens = (tokens: AuthTokens): void => {
+  localStorage.setItem('authTokens', JSON.stringify(tokens));
+};
+
+/**
+ * Clear authentication tokens
+ */
+export const clearAuthTokens = (): void => {
+  localStorage.removeItem('authTokens');
+  localStorage.removeItem('user');
+};
+
+/**
+ * Get mandatory headers for authenticated requests
+ */
+const getAuthHeaders = (): Record<string, string> => {
+  const tokens = getAuthTokens();
+  
+  return {
+    'Content-Type': 'application/json',
+    'iduseralboom': '',
+    'tokenalboom': tokens?.tokenAlboom || '',
+    'Authorization': tokens?.token ? `Bearer ${tokens.token}` : '',
+  };
+};
+
+/**
+ * Enhanced API call function with automatic authentication headers
+ */
+export const callAPI = async (endpoint: string, data: any = {}): Promise<any> => {
+  const empresa = getCompanyFromUrl();
+  
+  try {
+    const response = await fetch(API_BASE_URL, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        endpoint,
+        empresa,
+        ...data
+      })
+    });
+
+    if (!response.ok) {
+      // Handle authentication errors
+      if (response.status === 401 || response.status === 403) {
+        clearAuthTokens();
+        window.location.href = '/login';
+        throw new Error('Session expired. Please login again.');
+      }
+      
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`API call failed for ${endpoint}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Login function - calls the real authentication endpoint
+ */
+export const loginAPI = async (username: string, password: string): Promise<any> => {
+  const empresa = getCompanyFromUrl();
+  
+  try {
+    const response = await fetch(API_BASE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        endpoint: 'login',
+        empresa,
+        username,
+        password
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Login failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Login API call failed:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get processed payments using GET endpoint
+ */
+export const getProcessedPayments = async (type: 'ap' | 'ar'): Promise<any> => {
+  const empresa = getCompanyFromUrl();
+  const tokens = getAuthTokens();
+  
+  if (!tokens) {
+    throw new Error('No authentication tokens available');
+  }
+  
+  try {
+    const url = `${API_BASE_URL}/processed?empresa=${empresa}&type=${type}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'iduseralboom': '',
+        'tokenalboom': tokens.tokenAlboom,
+        'Authorization': `Bearer ${tokens.token}`,
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        clearAuthTokens();
+        window.location.href = '/login';
+        throw new Error('Session expired. Please login again.');
+      }
+      
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Get processed payments failed:', error);
+    throw error;
+  }
+};

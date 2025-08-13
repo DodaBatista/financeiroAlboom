@@ -4,19 +4,26 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ChevronDown, LogOut, Settings } from 'lucide-react';
+import { ChevronDown, LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 export function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleLogout = () => {
     logout();
+    toast({
+      title: "Logout realizado",
+      description: "Você foi desconectado do sistema.",
+    });
     navigate('/login');
   };
 
@@ -34,7 +41,7 @@ export function Navbar() {
       <div className="flex items-center gap-4">
         <SidebarTrigger />
         <h1 className="text-lg font-semibold text-foreground">
-          Sistema Financeiro
+          Sistema Financeiro - {user?.empresaDisplay || 'Sistema'}
         </h1>
       </div>
 
@@ -56,12 +63,19 @@ export function Navbar() {
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-56">
+            <div className="px-2 py-1.5">
+              <p className="text-sm font-medium">{user.name}</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+              <p className="text-xs text-muted-foreground">{user.empresaDisplay}</p>
+            </div>
+            <DropdownMenuSeparator />
             <DropdownMenuItem className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              Editar Conta
+              <User className="mr-2 h-4 w-4" />
+              Editar Dados
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="cursor-pointer text-destructive" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </DropdownMenuItem>

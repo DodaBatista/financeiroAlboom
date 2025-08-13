@@ -7,25 +7,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
+import { getCompanyDisplayName, getCompanyFromUrl } from '@/utils/company';
 
 const Login = () => {
-  const [email, setEmail] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const companyDisplay = getCompanyDisplayName(getCompanyFromUrl());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const success = await login(email, password);
+      const success = await login(username, password);
       if (success) {
         toast({
           title: "Login realizado com sucesso",
-          description: "Bem-vindo ao sistema!",
+          description: `Bem-vindo ao sistema ${companyDisplay}!`,
         });
         navigate('/');
       } else {
@@ -38,7 +40,7 @@ const Login = () => {
     } catch (error) {
       toast({
         title: "Erro no login",
-        description: "Ocorreu um erro inesperado.",
+        description: "Ocorreu um erro de conexão. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -54,19 +56,19 @@ const Login = () => {
             Sistema Financeiro
           </CardTitle>
           <p className="text-muted-foreground">
-            Faça login para acessar o sistema
+            {companyDisplay} - Faça login para acessar o sistema
           </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Usuário</Label>
+              <Label htmlFor="username">Usuário</Label>
               <Input
-                id="email"
+                id="username"
                 type="text"
                 placeholder="Digite seu usuário"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>
@@ -101,9 +103,8 @@ const Login = () => {
           </form>
           <div className="mt-4 p-3 bg-muted rounded-md">
             <p className="text-sm text-muted-foreground text-center">
-              <strong>Dados de teste:</strong><br />
-              Usuário: admin<br />
-              Senha: admin123
+              <strong>Empresa:</strong> {companyDisplay}<br />
+              Entre com suas credenciais para acessar o sistema
             </p>
           </div>
         </CardContent>

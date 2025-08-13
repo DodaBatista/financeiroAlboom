@@ -15,7 +15,7 @@ import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Clock, CreditCard, Do
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 
-const API_BASE_URL = 'https://fluxo.riapp.app/webhook/finance';
+import { callAPI, getProcessedPayments } from '@/utils/api';
 
 interface PayableTitle {
   id: string;
@@ -140,36 +140,11 @@ const AccountsPayable = () => {
   const [selectedBank, setSelectedBank] = useState(''); // No default selection
   const [paymentDate, setPaymentDate] = useState('');
 
-  // API Functions
-  const callAPI = async (endpoint: string, data: any = {}) => {
-    try {
-      const response = await fetch(API_BASE_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          endpoint,
-          empresa: 'produtora7',
-          type: 'ap',
-          ...data
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`API call failed for ${endpoint}:`, error);
-      throw error;
-    }
-  };
+  // API Functions - now using centralized API utility with authentication
 
   const fetchBanks = async () => {
     try {
-      const response = await callAPI('banks/paginate');
+      const response = await callAPI('banks/paginate', { type: 'ap' });
       // Filter only active banks
       const activeBanks = (response || []).filter((bank: Bank) => bank.active === "1");
       setBanks(activeBanks);
@@ -190,7 +165,7 @@ const AccountsPayable = () => {
     
     setFreelancerLoading(true);
     try {
-      const response = await callAPI('users/paginate', { searchTerm });
+      const response = await callAPI('users/paginate', { searchTerm, type: 'ap' });
       setFreelancers(response || []);
     } catch (error) {
       toast({
@@ -211,7 +186,7 @@ const AccountsPayable = () => {
     
     setContactLoading(true);
     try {
-      const response = await callAPI('contacts/paginate', { searchTerm });
+      const response = await callAPI('contacts/paginate', { searchTerm, type: 'ap' });
       setContacts(response || []);
     } catch (error) {
       toast({
@@ -226,7 +201,7 @@ const AccountsPayable = () => {
 
   const fetchPaymentTypes = async () => {
     try {
-      const response = await callAPI('categories/payments');
+      const response = await callAPI('categories/payments', { type: 'ap' });
       setPaymentTypes(response || []);
     } catch (error) {
       toast({
@@ -250,7 +225,8 @@ const AccountsPayable = () => {
         pageNumber: currentPage,
         pageSize: itemsPerPage,
         start_date: startDate,
-        end_date: endDate
+        end_date: endDate,
+        type: 'ap'
       };
 
       // Add customer_id based on filter type and selection
@@ -295,7 +271,7 @@ const AccountsPayable = () => {
   const fetchPaymentRequests = async () => {
     setRequestsLoading(true);
     try {
-      const response = await callAPI('processados');
+      const response = await getProcessedPayments('ap');
       setPaymentRequests(response || []);
     } catch (error) {
       toast({
@@ -492,7 +468,7 @@ const AccountsPayable = () => {
     }));
 
     try {
-      await callAPI('account_trans/clear_apr', { Titulo: payload });
+      await callAPI('account_trans/clear_apr', { Titulo: payload, type: 'ap' });
       
       if (paymentModal.type === 'single') {
         toast({
@@ -559,7 +535,7 @@ const AccountsPayable = () => {
         memo: request.memo
       }];
 
-      await callAPI('account_trans/clear_apr', { Titulo: payload });
+      await callAPI('account_trans/clear_apr', { Titulo: payload, type: 'ap' });
       
       toast({
         title: "Reprocessamento bem-sucedido",

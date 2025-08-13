@@ -1,14 +1,18 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { loginAPI, setAuthTokens, clearAuthTokens } from '@/utils/api';
+import { getCompanyDisplayName, getCompanyFromUrl } from '@/utils/company';
 
 interface User {
   id: string;
   name: string;
   email: string;
+  empresa: string;
+  empresaDisplay: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -30,27 +34,58 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem('user');
-    return stored ? JSON.parse(stored) : null;
+    const storedTokens = localStorage.getItem('authTokens');
+    
+    // Only restore user if both user data and tokens exist
+    if (stored && storedTokens) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        // Clear invalid data
+        localStorage.removeItem('user');
+        localStorage.removeItem('authTokens');
+        return null;
+      }
+    }
+    return null;
   });
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Mock authentication - accept admin/admin123
-    if (email === 'admin' && password === 'admin123') {
-      const mockUser = {
-        id: '1',
-        name: 'João da Silva',
-        email: 'joao.silva@empresa.com'
-      };
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      return true;
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      const result = await loginAPI(username, password);
+      
+      // Check if login was successful (adapt based on actual API response structure)
+      if (result && result.success && result.user && result.token && result.tokenAlboom) {
+        const empresa = getCompanyFromUrl();
+        const userData = {
+          id: result.user.id || '1',
+          name: result.user.name || username,
+          email: result.user.email || `${username}@${empresa}.com`,
+          empresa,
+          empresaDisplay: getCompanyDisplayName(empresa)
+        };
+        
+        // Store tokens separately from user data
+        setAuthTokens({
+          token: result.token,
+          tokenAlboom: result.tokenAlboom
+        });
+        
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
+    clearAuthTokens();
   };
 
   const value = {

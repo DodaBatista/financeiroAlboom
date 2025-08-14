@@ -127,7 +127,7 @@ const AccountsReceivable = () => {
 
   const fetchBanks = async () => {
     try {
-      const response = await callAPI('banks/paginate', { type: 'ar' });
+      const response = await callAPI('banks/paginate');
       // Filter only active banks
       const activeBanks = (response || []).filter((bank: Bank) => bank.active === "1");
       setBanks(activeBanks);
@@ -148,7 +148,7 @@ const AccountsReceivable = () => {
     
     setCustomerLoading(true);
     try {
-      const response = await callAPI('users/paginate', { searchTerm, type: 'ar' });
+      const response = await callAPI('contacts/paginate', { searchTerm, type: '3' });
       setCustomers(response || []);
     } catch (error) {
       toast({
@@ -163,7 +163,7 @@ const AccountsReceivable = () => {
 
   const fetchPaymentTypes = async () => {
     try {
-      const response = await callAPI('categories/payments', { type: 'ar' });
+      const response = await callAPI('categories/payments');
       setPaymentTypes(response || []);
     } catch (error) {
       toast({

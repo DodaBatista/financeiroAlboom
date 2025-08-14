@@ -58,9 +58,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (result && result.user && result.token && result.tokenAlboom) {
         const empresa = getCompanyFromUrl();
         const userData = {
-          id: result.user.id || '1',
+          id: result.user.id,
           name: result.user.name || username,
-          email: result.user.email || `${username}@${empresa}.com`,
+          email: result.user.email,
           empresa,
           empresaDisplay: getCompanyDisplayName(empresa)
         };

@@ -144,7 +144,7 @@ const AccountsPayable = () => {
 
   const fetchBanks = async () => {
     try {
-      const response = await callAPI('banks/paginate', { type: 'ap' });
+      const response = await callAPI('banks/paginate');
       // Filter only active banks
       const activeBanks = (response || []).filter((bank: Bank) => bank.active === "1");
       setBanks(activeBanks);
@@ -165,7 +165,7 @@ const AccountsPayable = () => {
     
     setFreelancerLoading(true);
     try {
-      const response = await callAPI('users/paginate', { searchTerm, type: 'ap' });
+      const response = await callAPI('users/paginate', { searchTerm, type: 'freelance' });
       setFreelancers(response || []);
     } catch (error) {
       toast({
@@ -186,7 +186,7 @@ const AccountsPayable = () => {
     
     setContactLoading(true);
     try {
-      const response = await callAPI('contacts/paginate', { searchTerm, type: 'ap' });
+      const response = await callAPI('contacts/paginate', { searchTerm, type: '3' });
       setContacts(response || []);
     } catch (error) {
       toast({
@@ -201,7 +201,7 @@ const AccountsPayable = () => {
 
   const fetchPaymentTypes = async () => {
     try {
-      const response = await callAPI('categories/payments', { type: 'ap' });
+      const response = await callAPI('categories/payments');
       setPaymentTypes(response || []);
     } catch (error) {
       toast({

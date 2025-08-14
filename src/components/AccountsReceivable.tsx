@@ -148,7 +148,7 @@ const AccountsReceivable = () => {
     
     setCustomerLoading(true);
     try {
-      const response = await callAPI('contacts/paginate', { searchTerm, type: '3' }, 'categories');
+      const response = await callAPI('contacts/paginate', { searchTerm, type: '2' }, 'categories');
       setCustomers(response || []);
     } catch (error) {
       toast({

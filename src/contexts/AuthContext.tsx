@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { loginAPI, setAuthTokens, clearAuthTokens } from '@/utils/api';
+import { clearAuthTokens, loginAPI, setAuthTokens } from '@/utils/api';
 import { getCompanyDisplayName, getCompanyFromUrl } from '@/utils/company';
+import React, { createContext, ReactNode, useContext, useState } from 'react';
 
 interface User {
   id: string;
@@ -52,10 +52,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      const result = await loginAPI(username, password);
+      const resultArray = await loginAPI(username, password);
+      let result;
+
+      if(resultArray.length) {
+        result = resultArray[0];
+      }
       
       // Check if login was successful (adapt based on actual API response structure)
-      if (result && result.success && result.user && result.token && result.tokenAlboom) {
+      if (result && result.user && result.token && result.tokenAlboom) {
         const empresa = getCompanyFromUrl();
         const userData = {
           id: result.user.id || '1',
@@ -64,6 +69,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           empresa,
           empresaDisplay: getCompanyDisplayName(empresa)
         };
+
+        console.log('user-data', userData);
         
         // Store tokens separately from user data
         setAuthTokens({

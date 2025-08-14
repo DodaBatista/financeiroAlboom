@@ -92,13 +92,12 @@ export const loginAPI = async (username: string, password: string): Promise<any>
   const empresa = getCompanyFromUrl();
   
   try {
-    const response = await fetch(API_BASE_URL, {
+    const response = await fetch(API_BASE_URL + '/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        endpoint: 'login',
         empresa,
         username,
         password

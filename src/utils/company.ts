@@ -9,9 +9,7 @@ interface CompanyMapping {
 // Mapping of URL identifiers to company names
 const COMPANY_MAPPINGS: CompanyMapping = {
   'p7': 'produtora7',
-  'produtora7': 'produtora7',
   'espacoterra': 'espacoterra',
-  'tajmahal': 'tajmahal',
   // Add more mappings as needed
 };
 
@@ -47,9 +45,8 @@ export const getCompanyFromUrl = (): string => {
  */
 export const getCompanyDisplayName = (companyCode: string): string => {
   const displayNames: CompanyMapping = {
-    'produtora7': 'Produtora 7',
+    'p7': 'Produtora 7',
     'espacoterra': 'Espaço Terra',
-    'tajmahal': 'Taj Mahal',
   };
   
   return displayNames[companyCode] || companyCode;

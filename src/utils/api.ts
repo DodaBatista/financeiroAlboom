@@ -53,7 +53,7 @@ const getAuthHeaders = (): Record<string, string> => {
 /**
  * Enhanced API call function with automatic authentication headers
  */
-export const callAPI = async (endpoint: string, data: any = {}, uri: string): Promise<any> => {
+export const callAPI = async (endpoint: string, data: any = {}, uri: string = null): Promise<any> => {
   const empresa = getCompanyFromUrl();
 
   const formattedURL = uri ? API_BASE_URL + "/" + uri : API_BASE_URL; 

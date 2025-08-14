@@ -401,7 +401,7 @@ const AccountsReceivable = () => {
     }));
 
     try {
-      await callAPI('account_trans/clear_apr', { Titulo: payload, type: 'ar' });
+      await callAPI(null, { Titulo: payload, type: 'ar' }, 'clear_accounts');
       
       if (paymentModal.type === 'single') {
         toast({

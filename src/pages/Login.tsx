@@ -23,24 +23,16 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const success = await login(username, password);
-      if (success) {
-        toast({
-          title: "Login realizado com sucesso",
-          description: `Bem-vindo ao sistema ${companyDisplay}!`,
-        });
-        navigate('/');
-      } else {
-        toast({
-          title: "Erro no login",
-          description: "Usuário ou senha incorretos.",
-          variant: "destructive",
-        });
-      }
+      await login(username, password);
+      toast({
+        title: "Login realizado com sucesso",
+        description: `Bem-vindo ao sistema ${companyDisplay}!`,
+      });
+      navigate('/');
     } catch (error) {
       toast({
         title: "Erro no login",
-        description: "Ocorreu um erro de conexão. Tente novamente.",
+        description: (error as Error)?.message || "Usuário ou senha incorretos.",
         variant: "destructive",
       });
     } finally {

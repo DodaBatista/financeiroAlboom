@@ -51,36 +51,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   });
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    try {
-      const result = await loginAPI(username, password);
-      
-      // Check if login was successful (adapt based on actual API response structure)
-      if (result && result.success && result.user && result.token && result.tokenAlboom) {
-        const empresa = getCompanyFromUrl();
-        const userData = {
-          id: result.user.id || '1',
-          name: result.user.name || username,
-          email: result.user.email || `${username}@${empresa}.com`,
-          empresa,
-          empresaDisplay: getCompanyDisplayName(empresa)
-        };
-        
-        // Store tokens separately from user data
-        setAuthTokens({
-          token: result.token,
-          tokenAlboom: result.tokenAlboom
-        });
-        
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Login failed:', error);
-      return false;
-    }
+    const result = await loginAPI(username, password);
+    
+    const empresa = getCompanyFromUrl();
+    const userData = {
+      id: result.user.id || '1',
+      name: result.user.name || username,
+      email: result.user.email || `${username}@${empresa}.com`,
+      empresa,
+      empresaDisplay: getCompanyDisplayName(empresa)
+    };
+    
+    // Store tokens separately from user data
+    setAuthTokens({
+      token: result.token,
+      tokenAlboom: result.tokenAlboom
+    });
+    
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+    return true;
   };
 
   const logout = () => {

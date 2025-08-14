@@ -92,13 +92,12 @@ export const loginAPI = async (username: string, password: string): Promise<any>
   const empresa = getCompanyFromUrl();
   
   try {
-    const response = await fetch(API_BASE_URL, {
+    const response = await fetch(`${API_BASE_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        endpoint: 'login',
         empresa,
         username,
         password
@@ -109,7 +108,29 @@ export const loginAPI = async (username: string, password: string): Promise<any>
       throw new Error(`Login failed: ${response.status}`);
     }
 
-    const result = await response.json();
+    // Parse defensivo da resposta
+    const textResponse = await response.text();
+    if (!textResponse) {
+      throw new Error('Resposta vazia do servidor');
+    }
+
+    let result;
+    try {
+      result = JSON.parse(textResponse);
+    } catch {
+      throw new Error('Resposta inválida do servidor');
+    }
+
+    // Se for um array, pegar o primeiro elemento
+    if (Array.isArray(result)) {
+      result = result[0];
+    }
+
+    // Verificar se tem os campos necessários
+    if (!result || !result.token || !result.tokenAlboom || !result.user) {
+      throw new Error(result?.message || 'Usuário ou senha incorretos');
+    }
+
     return result;
   } catch (error) {
     console.error('Login API call failed:', error);

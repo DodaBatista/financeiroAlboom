@@ -52,14 +52,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      const resultArray = await loginAPI(username, password);
-      let result;
+      const result = await loginAPI(username, password);
 
-      if(resultArray.length) {
-        result = resultArray[0];
-      }
-      
       // Check if login was successful (adapt based on actual API response structure)
+      console.log(result, result.user, result.token, result.tokenAlboom);
       if (result && result.user && result.token && result.tokenAlboom) {
         const empresa = getCompanyFromUrl();
         const userData = {
@@ -69,8 +65,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           empresa,
           empresaDisplay: getCompanyDisplayName(empresa)
         };
-
-        console.log('user-data', userData);
         
         // Store tokens separately from user data
         setAuthTokens({

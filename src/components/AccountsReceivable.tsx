@@ -13,7 +13,7 @@ import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Clock, CreditCard, Do
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 
-import { callAPI, callAPIAccounts, getProcessedPayments } from '@/utils/api';
+import { callAPI, getProcessedPayments } from '@/utils/api';
 
 interface ReceivableTitle {
   id: string;
@@ -148,7 +148,7 @@ const AccountsReceivable = () => {
     
     setCustomerLoading(true);
     try {
-      const response = await callAPI('contacts/paginate', { searchTerm, type: '3' });
+      const response = await callAPI('contacts/paginate', { searchTerm, type: '3' }, 'categories');
       setCustomers(response || []);
     } catch (error) {
       toast({
@@ -207,7 +207,7 @@ const AccountsReceivable = () => {
         requestData.sortDir = sortConfig.direction;
       }
 
-      const response = await callAPIAccounts('account_trans/paginate_apr', requestData);
+      const response = await callAPI('account_trans/paginate_apr', requestData, 'accounts');
 
       // Nova estrutura da API: [{ titulos: [...], count: "45" }]
       const data = response?.[0];

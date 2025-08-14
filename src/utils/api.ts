@@ -53,46 +53,13 @@ const getAuthHeaders = (): Record<string, string> => {
 /**
  * Enhanced API call function with automatic authentication headers
  */
-export const callAPI = async (endpoint: string, data: any = {}): Promise<any> => {
+export const callAPI = async (endpoint: string, data: any = {}, uri: string): Promise<any> => {
   const empresa = getCompanyFromUrl();
+
+  const formattedURL = uri ? API_BASE_URL + "/" + uri : API_BASE_URL; 
   
   try {
-    const response = await fetch(API_BASE_URL, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        endpoint,
-        empresa,
-        ...data
-      })
-    });
-
-    if (!response.ok) {
-      // Handle authentication errors
-      if (response.status === 401 || response.status === 403) {
-        clearAuthTokens();
-        window.location.href = '/login';
-        throw new Error('Session expired. Please login again.');
-      }
-      
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error(`API call failed for ${endpoint}:`, error);
-    throw error;
-  }
-};
-
-/**
- * Enhanced API call function with automatic authentication headers
- */
-export const callAPIAccounts = async (endpoint: string, data: any = {}): Promise<any> => {
-  const empresa = getCompanyFromUrl();
-  
-  try {
-    const response = await fetch(API_BASE_URL + "/accounts", {
+    const response = await fetch(formattedURL, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({

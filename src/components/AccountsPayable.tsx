@@ -15,7 +15,7 @@ import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Clock, CreditCard, Do
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 
-import { callAPI, callAPIAccounts, getProcessedPayments } from '@/utils/api';
+import { callAPI, getProcessedPayments } from '@/utils/api';
 
 interface PayableTitle {
   id: string;
@@ -165,7 +165,7 @@ const AccountsPayable = () => {
     
     setFreelancerLoading(true);
     try {
-      const response = await callAPI('users/paginate', { searchTerm, type: 'freelance' });
+      const response = await callAPI('users/paginate', { searchTerm, type: 'freelance' }, 'categories');
       setFreelancers(response || []);
     } catch (error) {
       toast({
@@ -186,7 +186,7 @@ const AccountsPayable = () => {
     
     setContactLoading(true);
     try {
-      const response = await callAPI('contacts/paginate', { searchTerm, type: '3' });
+      const response = await callAPI('contacts/paginate', { searchTerm, type: '3' }, 'categories');
       setContacts(response || []);
     } catch (error) {
       toast({
@@ -247,7 +247,7 @@ const AccountsPayable = () => {
         requestData.sortDir = sortConfig.direction;
       }
 
-      const response = await callAPIAccounts('account_trans/paginate_apr', requestData);
+      const response = await callAPI('account_trans/paginate_apr', requestData, 'accounts');
 
       // Nova estrutura da API: [{ titulos: [...], count: "45" }]
       const data = response?.[0];

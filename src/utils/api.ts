@@ -86,6 +86,41 @@ export const callAPI = async (endpoint: string, data: any = {}): Promise<any> =>
 };
 
 /**
+ * Enhanced API call function with automatic authentication headers
+ */
+export const callAPIAccounts = async (endpoint: string, data: any = {}): Promise<any> => {
+  const empresa = getCompanyFromUrl();
+  
+  try {
+    const response = await fetch(API_BASE_URL + "/accounts", {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        endpoint,
+        empresa,
+        ...data
+      })
+    });
+
+    if (!response.ok) {
+      // Handle authentication errors
+      if (response.status === 401 || response.status === 403) {
+        clearAuthTokens();
+        window.location.href = '/login';
+        throw new Error('Session expired. Please login again.');
+      }
+      
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`API call failed for ${endpoint}:`, error);
+    throw error;
+  }
+};
+
+/**
  * Login function - calls the real authentication endpoint
  */
 export const loginAPI = async (username: string, password: string): Promise<any> => {

@@ -55,7 +55,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const result = await loginAPI(username, password);
 
       // Check if login was successful (adapt based on actual API response structure)
-      console.log(result, result.user, result.token, result.tokenAlboom);
       if (result && result.user && result.token && result.tokenAlboom) {
         const empresa = getCompanyFromUrl();
         const userData = {

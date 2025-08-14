@@ -15,7 +15,7 @@ import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Clock, CreditCard, Do
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 
-import { callAPI, getProcessedPayments } from '@/utils/api';
+import { callAPI, callAPIAccounts, getProcessedPayments } from '@/utils/api';
 
 interface PayableTitle {
   id: string;
@@ -247,7 +247,7 @@ const AccountsPayable = () => {
         requestData.sortDir = sortConfig.direction;
       }
 
-      const response = await callAPI('account_trans/paginate_apr', requestData);
+      const response = await callAPIAccounts('account_trans/paginate_apr', requestData);
 
       // Nova estrutura da API: [{ titulos: [...], count: "45" }]
       const data = response?.[0];

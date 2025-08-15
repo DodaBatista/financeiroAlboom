@@ -468,7 +468,7 @@ const AccountsReceivable = () => {
         memo: request.memo
       }];
 
-      await callAPI('account_trans/clear_apr', { Titulo: payload, type: 'ar' });
+      await callAPI(null, { Titulo: payload, type: 'ar' }, 'clear_accounts');
       
       toast({
         title: "Reprocessamento bem-sucedido",

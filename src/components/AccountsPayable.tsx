@@ -468,7 +468,7 @@ const AccountsPayable = () => {
     }));
 
     try {
-      await callAPI('account_trans/clear_apr', { Titulo: payload, type: 'ap' });
+      await callAPI(null, { Titulo: payload, type: 'ap' }, 'clear_accounts');
       
       if (paymentModal.type === 'single') {
         toast({

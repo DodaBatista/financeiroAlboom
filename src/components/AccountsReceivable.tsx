@@ -127,7 +127,7 @@ const AccountsReceivable = () => {
 
   const fetchBanks = async () => {
     try {
-      const response = await callAPI('banks/paginate');
+      const response = await callAPI('banks/paginate', {}, 'categories');
       // Filter only active banks
       const activeBanks = (response || []).filter((bank: Bank) => bank.active === "1");
       setBanks(activeBanks);
@@ -163,7 +163,7 @@ const AccountsReceivable = () => {
 
   const fetchPaymentTypes = async () => {
     try {
-      const response = await callAPI('categories/payments');
+      const response = await callAPI('categories/payments', {}, 'categories');
       setPaymentTypes(response || []);
     } catch (error) {
       toast({
@@ -468,7 +468,7 @@ const AccountsReceivable = () => {
         memo: request.memo
       }];
 
-      await callAPI('account_trans/clear_apr', { Titulo: payload, type: 'ar' });
+      await callAPI(null, { Titulo: payload, type: 'ar' }, 'clear_accounts');
       
       toast({
         title: "Reprocessamento bem-sucedido",

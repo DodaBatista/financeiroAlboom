@@ -10,8 +10,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-  const [username, setUsername] = useState('douglasbatista@relatoriosinteligentes.com');
-  const [password, setPassword] = useState('654321');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();

@@ -144,7 +144,7 @@ const AccountsPayable = () => {
 
   const fetchBanks = async () => {
     try {
-      const response = await callAPI('banks/paginate');
+      const response = await callAPI('banks/paginate', {}, 'categories');
       // Filter only active banks
       const activeBanks = (response || []).filter((bank: Bank) => bank.active === "1");
       setBanks(activeBanks);
@@ -201,7 +201,7 @@ const AccountsPayable = () => {
 
   const fetchPaymentTypes = async () => {
     try {
-      const response = await callAPI('categories/payments');
+      const response = await callAPI('categories/payments', {}, 'categories');
       setPaymentTypes(response || []);
     } catch (error) {
       toast({

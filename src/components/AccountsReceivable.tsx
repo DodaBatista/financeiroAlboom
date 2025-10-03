@@ -44,7 +44,15 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useDebounce } from "use-debounce";
 
-import { callAPI, getProcessedPayments } from "@/utils/api";
+import { bankService } from "@/services/bankService";
+import { fetchContactsService } from "@/services/contactService";
+import { paymentService } from "@/services/paymentService";
+import { getProcessedPayments } from "@/services/processedPaymentsService";
+import {
+  FetchTitlesRequest,
+  getAvailableTitles,
+} from "@/services/titleService";
+import { callAPI } from "@/utils/api";
 
 interface ReceivableTitle {
   id: string;
@@ -66,6 +74,7 @@ interface Customer {
   name: string;
   lastname: string;
   email: string;
+  company?: string;
 }
 
 interface PaymentType {
@@ -147,10 +156,7 @@ const AccountsReceivable = () => {
 
   const fetchBanks = async () => {
     try {
-      const response = await callAPI("banks/paginate", {}, "categories");
-      const activeBanks = (response || []).filter(
-        (bank: Bank) => bank.active === "1"
-      );
+      const activeBanks = await bankService.fetchBanks();
       setBanks(activeBanks);
     } catch (error) {
       toast({
@@ -169,12 +175,8 @@ const AccountsReceivable = () => {
 
     setCustomerLoading(true);
     try {
-      const response = await callAPI(
-        "contacts/paginate",
-        { searchTerm, type: "2" },
-        "categories"
-      );
-      setCustomers(response || []);
+      const result = await fetchContactsService(searchTerm, "2");
+      setCustomers(result || []);
     } catch (error) {
       toast({
         title: "Erro ao carregar clientes",
@@ -188,8 +190,8 @@ const AccountsReceivable = () => {
 
   const fetchPaymentTypes = async () => {
     try {
-      const response = await callAPI("categories/payments", {}, "categories");
-      setPaymentTypes(response || []);
+      const types = await paymentService.fetchPaymentTypes();
+      setPaymentTypes(types);
     } catch (error) {
       toast({
         title: "Erro ao carregar tipos de pagamento",
@@ -199,48 +201,40 @@ const AccountsReceivable = () => {
     }
   };
 
-  const fetchTitles = async () => {
+  const fetchTitles = async (
+    sort?: { key: string; direction: "ASC" | "DESC" } | null
+  ) => {
     if (!startDate || !endDate) return;
 
     setTitles([]);
     setFilteredTitles([]);
-
     setLoading(true);
+
     try {
-      const requestData: any = {
+      const effectiveSort = sort ?? sortConfig;
+
+      const requestData: FetchTitlesRequest = {
+        type: "ar",
+        class_id: "all",
+        doc_type: selectedPaymentType || "all",
+        customer_id: selectedCustomer.length ? selectedCustomer : null,
         pageNumber: currentPage,
         pageSize: itemsPerPage,
+        groupBy: null,
+        sortBy: effectiveSort ? effectiveSort.key : "account_trans.due_date",
+        sortDir: effectiveSort ? effectiveSort.direction : "DESC",
+        searchTerm: "",
+        period: "other",
         start_date: startDate,
         end_date: endDate,
-        type: "ar",
+        csv_mode: 0,
       };
 
-      if (selectedCustomer) {
-        requestData.customer_id = selectedCustomer;
-      }
-
-      if (selectedPaymentType && selectedPaymentType !== "all") {
-        requestData.doc_type = selectedPaymentType;
-      }
-
-      if (sortConfig) {
-        requestData.sortBy = sortConfig.key;
-        requestData.sortDir = sortConfig.direction;
-      }
-
-      const response = await callAPI(
-        "account_trans/paginate_apr",
-        requestData,
-        "accounts"
-      );
-
-      const data = response?.[0];
-      const titulos = data?.titulos || [];
-      const totalCount = parseInt(data?.count || "0", 10);
+      const { titulos, count } = await getAvailableTitles(requestData);
 
       setTitles(titulos);
       setFilteredTitles(titulos);
-      setTotalTitles(totalCount);
+      setTotalTitles(count);
     } catch (error) {
       toast({
         title: "Erro ao carregar títulos",

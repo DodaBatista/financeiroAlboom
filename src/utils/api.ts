@@ -1,13 +1,13 @@
 import { getCompanyFromUrl } from './company';
 
-const API_BASE_URL = 'https://fluxo.riapp.app/webhook/finance';
+export const API_BASE_URL = 'https://fluxo.riapp.app/webhook/finance';
 
 interface AuthTokens {
   token: string;
   tokenAlboom: string;
 }
 
-const getAuthTokens = (): AuthTokens | null => {
+export const getAuthTokens = (): AuthTokens | null => {
   const storedTokens = localStorage.getItem('authTokens');
   if (!storedTokens) return null;
 
@@ -31,22 +31,32 @@ const getAuthHeaders = (): Record<string, string> => {
   const tokens = getAuthTokens();
 
   return {
-    'Content-Type': 'application/json',
-    'iduseralboom': '',
-    'tokenalboom': tokens?.tokenAlboom || '',
-    'Authorization': tokens?.token ? `Bearer ${tokens.token}` : '',
+    "Content-Type": "application/json",
+    "iduseralboom": "",
+    "tokenalboom": tokens?.tokenAlboom || "",
+    "Authorization": tokens?.tokenAlboom ? `Bearer ${tokens.tokenAlboom}` : "",
   };
 };
 
-export const callAPI = async (endpoint: string, data: any = {}, uri: string = null): Promise<any> => {
+export const callAPIA = async (endpoint: string, data: any = {}, uri: string = null): Promise<any> => {
   const empresa = getCompanyFromUrl();
 
   const formattedURL = uri ? API_BASE_URL + "/" + uri : API_BASE_URL;
 
+
+  const tokens = getAuthTokens();
+
+  const headers = {
+    "Content-Type": "application/json",
+    "iduseralboom": "",
+    "tokenalboom": tokens?.tokenAlboom || "",
+    "Authorization": tokens?.token ? `Bearer ${tokens.token}` : "",
+  };
+
   try {
     const response = await fetch(formattedURL, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: headers,
       body: JSON.stringify({
         endpoint,
         empresa,
@@ -67,6 +77,71 @@ export const callAPI = async (endpoint: string, data: any = {}, uri: string = nu
     return await response.json();
   } catch (error) {
     console.error(`API call failed for ${endpoint}:`, error);
+    throw error;
+  }
+};
+
+export const callAPI = async (
+  endpoint: string,
+  data: any = {},
+  method: string | "POST"
+): Promise<any> => {
+  const empresa = getCompanyFromUrl();
+  const formattedURL = `https://${empresa}.alboomcrm.com/api/${endpoint}`;
+
+  try {
+    const options: RequestInit = {
+      method,
+      headers: getAuthHeaders(),
+    };
+
+    if (method !== "GET" && data && Object.keys(data).length > 0) {
+      options.body = JSON.stringify(data);
+    }
+
+    const response = await fetch(formattedURL, options);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API error details:", errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`API call failed for ${endpoint}:`, error);
+    throw error;
+  }
+};
+
+export const callAPIProxy = async (
+  endpoint: string,
+  data: any = {},
+  method: string | "POST"
+): Promise<any> => {
+  try {
+    const options: RequestInit = {
+      method,
+      headers: getAuthHeaders(),
+    };
+
+    if (method !== "GET" && data && Object.keys(data).length > 0) {
+      options.body = JSON.stringify(data);
+    }
+
+    const formattedURL = `/proxy-titulos/${endpoint}`;
+
+    const response = await fetch(formattedURL, options);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API proxy error details:", errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`API proxy call failed for ${endpoint}:`, error);
     throw error;
   }
 };
@@ -114,44 +189,6 @@ export const loginAPI = async (username: string, password: string): Promise<any>
     return result;
   } catch (error) {
     console.error('Login API call failed:', error);
-    throw error;
-  }
-};
-
-export const getProcessedPayments = async (type: 'ap' | 'ar'): Promise<any> => {
-  const empresa = getCompanyFromUrl();
-  const tokens = getAuthTokens();
-
-  if (!tokens) {
-    throw new Error('No authentication tokens available');
-  }
-
-  try {
-    const url = `${API_BASE_URL}/processed?empresa=${empresa}&type=${type}`;
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'iduseralboom': '',
-        'tokenalboom': tokens.tokenAlboom,
-        'Authorization': `Bearer ${tokens.token}`,
-      }
-    });
-
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        clearAuthTokens();
-        window.location.href = '/login';
-        throw new Error('Session expired. Please login again.');
-      }
-
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Get processed payments failed:', error);
     throw error;
   }
 };

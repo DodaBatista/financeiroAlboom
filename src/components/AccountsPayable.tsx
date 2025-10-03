@@ -46,7 +46,16 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useDebounce } from "use-debounce";
 
-import { callAPI, getProcessedPayments } from "@/utils/api";
+import { bankService } from "@/services/bankService";
+import { fetchContactsService } from "@/services/contactService";
+import { fetchFreelancersService } from "@/services/freelancerService";
+import { paymentService } from "@/services/paymentService";
+import { getProcessedPayments } from "@/services/processedPaymentsService";
+import {
+  FetchTitlesRequest,
+  getAvailableTitles,
+} from "@/services/titleService";
+import { callAPI } from "@/utils/api";
 
 interface PayableTitle {
   id: string;
@@ -166,10 +175,7 @@ const AccountsPayable = () => {
 
   const fetchBanks = async () => {
     try {
-      const response = await callAPI("banks/paginate", {}, "categories");
-      const activeBanks = (response || []).filter(
-        (bank: Bank) => bank.active === "1"
-      );
+      const activeBanks = await bankService.fetchBanks();
       setBanks(activeBanks);
     } catch (error) {
       toast({
@@ -188,12 +194,8 @@ const AccountsPayable = () => {
 
     setFreelancerLoading(true);
     try {
-      const response = await callAPI(
-        "users/paginate",
-        { searchTerm, type: "freelance" },
-        "categories"
-      );
-      setFreelancers(response || []);
+      const result = await fetchFreelancersService(searchTerm);
+      setFreelancers(result);
     } catch (error) {
       toast({
         title: "Erro ao carregar freelancers",
@@ -213,12 +215,8 @@ const AccountsPayable = () => {
 
     setContactLoading(true);
     try {
-      const response = await callAPI(
-        "contacts/paginate",
-        { searchTerm, type: "3" },
-        "categories"
-      );
-      setContacts(response || []);
+      const result = await fetchContactsService(searchTerm, "3");
+      setContacts(result);
     } catch (error) {
       toast({
         title: "Erro ao carregar fornecedores",
@@ -232,8 +230,8 @@ const AccountsPayable = () => {
 
   const fetchPaymentTypes = async () => {
     try {
-      const response = await callAPI("categories/payments", {}, "categories");
-      setPaymentTypes(response || []);
+      const types = await paymentService.fetchPaymentTypes();
+      setPaymentTypes(types);
     } catch (error) {
       toast({
         title: "Erro ao carregar tipos de pagamento",
@@ -250,46 +248,38 @@ const AccountsPayable = () => {
 
     setTitles([]);
     setFilteredTitles([]);
-
     setLoading(true);
+
     try {
-      const requestData: any = {
+      const effectiveSort = sort ?? sortConfig;
+
+      const requestData: FetchTitlesRequest = {
+        type: "ap",
+        class_id: "all",
+        doc_type: selectedPaymentType || "all",
+        customer_id:
+          filterType === "freelancer" && selectedFreelancer
+            ? selectedFreelancer
+            : filterType === "supplier" && selectedContact
+            ? selectedContact
+            : null,
         pageNumber: currentPage,
         pageSize: itemsPerPage,
+        groupBy: null,
+        sortBy: effectiveSort ? effectiveSort.key : "account_trans.due_date",
+        sortDir: effectiveSort ? effectiveSort.direction : "DESC",
+        searchTerm: "",
+        period: "other",
         start_date: startDate,
         end_date: endDate,
-        type: "ap",
+        csv_mode: 0,
       };
 
-      if (filterType === "freelancer" && selectedFreelancer) {
-        requestData.customer_id = selectedFreelancer;
-      } else if (filterType === "supplier" && selectedContact) {
-        requestData.customer_id = selectedContact;
-      }
-
-      if (selectedPaymentType && selectedPaymentType !== "all") {
-        requestData.doc_type = selectedPaymentType;
-      }
-
-      const effectiveSort = sort ?? sortConfig;
-      if (effectiveSort) {
-        requestData.sortBy = effectiveSort.key;
-        requestData.sortDir = effectiveSort.direction;
-      }
-
-      const response = await callAPI(
-        "account_trans/paginate_apr",
-        requestData,
-        "accounts"
-      );
-
-      const data = response?.[0];
-      const titulos = data?.titulos || [];
-      const totalCount = parseInt(data?.count || "0", 10);
+      const { titulos, count } = await getAvailableTitles(requestData);
 
       setTitles(titulos);
       setFilteredTitles(titulos);
-      setTotalTitles(totalCount);
+      setTotalTitles(count);
     } catch (error) {
       toast({
         title: "Erro ao carregar títulos",

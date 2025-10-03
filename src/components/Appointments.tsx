@@ -36,7 +36,10 @@ import {
 import { useEffect, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { callAPI, getProcessedAppointments } from "@/utils/api";
+import { fetchFilteredAppointmentsService } from "@/services/appointmentService";
+import { fetchEventTypesService } from "@/services/eventTypeService";
+import { getProcessedAppointments } from "@/services/processedAppointmentsService";
+import { callAPI } from "@/utils/api";
 
 interface Appointment {
   id: string;
@@ -120,12 +123,8 @@ const Appointments = () => {
 
   const fetchEventTypes = async () => {
     try {
-      const response = await callAPI(
-        "finance",
-        { endpoint: "eventtypes", empresa: "produtora7" },
-        "categories"
-      );
-      setEventTypes(response || []);
+      const types = await fetchEventTypesService();
+      setEventTypes(types);
     } catch (error) {
       toast({
         title: "Erro ao carregar tipos de pagamento",
@@ -142,8 +141,8 @@ const Appointments = () => {
 
     setAppointments([]);
     setFilteredAppointments([]);
-
     setLoading(true);
+
     try {
       const requestData: any = {
         pageNumber: currentPage,
@@ -161,19 +160,13 @@ const Appointments = () => {
         requestData.sortDir = effectiveSort.direction;
       }
 
-      const response = await callAPI(
-        "events/paginate",
-        requestData,
-        "scheduling"
+      const { appointments, total } = await fetchFilteredAppointmentsService(
+        requestData
       );
 
-      const data = response?.[0];
-      const titulos = data?.titulos || [];
-      const totalCount = parseInt(data?.count || "0", 10);
-
-      setAppointments(titulos);
-      setFilteredAppointments(titulos);
-      setTotalAppointments(totalCount);
+      setAppointments(appointments);
+      setFilteredAppointments(appointments);
+      setTotalAppointments(total);
     } catch (error) {
       toast({
         title: "Erro ao carregar agendamentos",
@@ -482,13 +475,6 @@ const Appointments = () => {
       default:
         return null;
     }
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
   };
 
   const formatDate = (date: string) => {

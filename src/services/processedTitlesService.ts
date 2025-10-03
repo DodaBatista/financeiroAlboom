@@ -1,7 +1,7 @@
 import { API_BASE_URL, clearAuthTokens, getAuthTokens } from "../utils/api";
 import { getCompanyFromUrl } from "../utils/company";
 
-export const getProcessedPayments = async (type: "ap" | "ar"): Promise<any[]> => {
+export const getProcessedTitles = async (type: "ap" | "ar"): Promise<any[]> => {
   const empresa = getCompanyFromUrl();
   const tokens = getAuthTokens();
 

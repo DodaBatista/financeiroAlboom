@@ -1,5 +1,5 @@
 import { callAPIProxy } from "../utils/api";
-import { getProcessedPayments } from "./processedPaymentsService";
+import { getProcessedTitles } from "./processedTitlesService";
 
 export interface Title {
     id: string;
@@ -62,7 +62,7 @@ export const getAvailableTitles = async (
   data: FetchTitlesRequest
 ): Promise<FetchTitlesResponse> => {
   const { titulos, count } = await fetchTitlesService(data);
-  const processed = await getProcessedPayments(data.type);
+  const processed = await getProcessedTitles(data.type);
 
   const processedIds = new Set(processed.map((p: any) => p.id_titulo));
   const filtered = titulos.filter(t => !processedIds.has(t.id));

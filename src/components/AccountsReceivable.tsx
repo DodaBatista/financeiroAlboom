@@ -47,7 +47,7 @@ import { useDebounce } from "use-debounce";
 import { bankService } from "@/services/bankService";
 import { fetchContactsService } from "@/services/contactService";
 import { paymentService } from "@/services/paymentService";
-import { getProcessedPayments } from "@/services/processedPaymentsService";
+import { getProcessedTitles } from "@/services/processedTitlesService";
 import {
   FetchTitlesRequest,
   getAvailableTitles,
@@ -249,7 +249,7 @@ const AccountsReceivable = () => {
   const fetchPaymentRequests = async () => {
     setRequestsLoading(true);
     try {
-      const response = await getProcessedPayments("ar");
+      const response = await getProcessedTitles("ar");
 
       const normalized =
         Array.isArray(response) &&

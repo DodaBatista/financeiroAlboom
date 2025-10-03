@@ -14,6 +14,11 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/proxy-titulos/, '/api'),
       },
+      '/proxy-agendamentos': {
+        target: 'https://produtora7.alboomcrm.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/proxy-agendamentos/, '/api'),
+      },
     },
   },
   plugins: [

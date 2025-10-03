@@ -38,49 +38,6 @@ const getAuthHeaders = (): Record<string, string> => {
   };
 };
 
-export const callAPIA = async (endpoint: string, data: any = {}, uri: string = null): Promise<any> => {
-  const empresa = getCompanyFromUrl();
-
-  const formattedURL = uri ? API_BASE_URL + "/" + uri : API_BASE_URL;
-
-
-  const tokens = getAuthTokens();
-
-  const headers = {
-    "Content-Type": "application/json",
-    "iduseralboom": "",
-    "tokenalboom": tokens?.tokenAlboom || "",
-    "Authorization": tokens?.token ? `Bearer ${tokens.token}` : "",
-  };
-
-  try {
-    const response = await fetch(formattedURL, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify({
-        endpoint,
-        empresa,
-        ...data
-      })
-    });
-
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        clearAuthTokens();
-        window.location.href = '/login';
-        throw new Error('Session expired. Please login again.');
-      }
-
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error(`API call failed for ${endpoint}:`, error);
-    throw error;
-  }
-};
-
 export const callAPI = async (
   endpoint: string,
   data: any = {},
@@ -189,44 +146,6 @@ export const loginAPI = async (username: string, password: string): Promise<any>
     return result;
   } catch (error) {
     console.error('Login API call failed:', error);
-    throw error;
-  }
-};
-
-export const getProcessedAppointments = async (): Promise<any> => {
-  const empresa = getCompanyFromUrl();
-  const tokens = getAuthTokens();
-
-  if (!tokens) {
-    throw new Error("No authentication tokens available");
-  }
-
-  try {
-    const url = `${API_BASE_URL}/scheduling/processed?empresa=${empresa}`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "iduseralboom": "",
-        "tokenalboom": tokens.tokenAlboom,
-        Authorization: `Bearer ${tokens.token}`,
-      },
-    });
-
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        clearAuthTokens();
-        window.location.href = "/login";
-        throw new Error("Session expired. Please login again.");
-      }
-
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Get processed appointments failed:", error);
     throw error;
   }
 };

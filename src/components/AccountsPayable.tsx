@@ -50,7 +50,7 @@ import { bankService } from "@/services/bankService";
 import { fetchContactsService } from "@/services/contactService";
 import { fetchFreelancersService } from "@/services/freelancerService";
 import { paymentService } from "@/services/paymentService";
-import { getProcessedPayments } from "@/services/processedPaymentsService";
+import { getProcessedTitles } from "@/services/processedTitlesService";
 import {
   FetchTitlesRequest,
   getAvailableTitles,
@@ -294,7 +294,7 @@ const AccountsPayable = () => {
   const fetchPaymentRequests = async () => {
     setRequestsLoading(true);
     try {
-      const response = await getProcessedPayments("ap");
+      const response = await getProcessedTitles("ap");
 
       const normalized =
         Array.isArray(response) &&

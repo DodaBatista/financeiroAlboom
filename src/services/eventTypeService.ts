@@ -5,7 +5,7 @@ export const fetchEventTypesService = async (): Promise<any[]> => {
     const response = await callAPI(
       "eventtypes",
       {},
-      "POST"
+      "GET"
     );
 
     return response || [];

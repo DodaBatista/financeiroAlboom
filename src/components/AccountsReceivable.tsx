@@ -52,7 +52,7 @@ import {
   FetchTitlesRequest,
   getAvailableTitles,
 } from "@/services/titleService";
-import { callAPI } from "@/utils/api";
+import { callAPIN8N } from "@/utils/api";
 
 interface ReceivableTitle {
   id: string;
@@ -427,7 +427,7 @@ const AccountsReceivable = () => {
     }));
 
     try {
-      await callAPI(null, { Titulo: payload, type: "ar" }, "clear_accounts");
+      await callAPIN8N(null, { Titulo: payload, type: "ar" }, "clear_accounts");
 
       if (paymentModal.type === "single") {
         toast({
@@ -495,7 +495,7 @@ const AccountsReceivable = () => {
         },
       ];
 
-      await callAPI(null, { Titulo: payload, type: "ar" }, "clear_accounts");
+      await callAPIN8N(null, { Titulo: payload, type: "ar" }, "clear_accounts");
 
       toast({
         title: "Reprocessamento bem-sucedido",

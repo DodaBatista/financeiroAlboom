@@ -39,7 +39,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { fetchFilteredAppointmentsService } from "@/services/appointmentService";
 import { fetchEventTypesService } from "@/services/eventTypeService";
 import { getProcessedAppointments } from "@/services/processedAppointmentsService";
-import { callAPI } from "@/utils/api";
+import { callAPI, callAPIN8N } from "@/utils/api";
 
 interface Appointment {
   id: string;
@@ -353,7 +353,7 @@ const Appointments = () => {
     }));
 
     try {
-      await callAPI(null, { Titulo: payload, type: "ap" }, "clear_accounts");
+      await callAPIN8N(null, { Agendamento: payload}, "scheduling/clear_accounts");
 
       if (processAppointmentModal.type === "single") {
         toast({

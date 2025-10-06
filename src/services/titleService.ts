@@ -1,4 +1,4 @@
-import { callAPIProxy } from "../utils/api";
+import { callAPI } from "../utils/api";
 import { getProcessedTitles } from "./processedTitlesService";
 
 export interface Title {
@@ -42,7 +42,7 @@ export const fetchTitlesService = async (
     data: FetchTitlesRequest
 ): Promise<FetchTitlesResponse> => {
     try {
-        const response = await callAPIProxy(
+        const response = await callAPI(
             "account_trans/paginate_apr",
             data,
             "POST"

@@ -1,4 +1,4 @@
-import { callAPIProxy } from "@/utils/api";
+import { callAPI } from "@/utils/api";
 import { getProcessedAppointments } from "./processedAppointmentsService";
 
 export interface AppointmentQuery {
@@ -35,7 +35,7 @@ export const fetchAppointmentsService = async (params: any): Promise<{ appointme
             is_csv: 0,
         };
 
-        const response = await callAPIProxy(
+        const response = await callAPI(
             "events/paginate",
             requestData,
             "POST"

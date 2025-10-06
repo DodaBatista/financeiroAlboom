@@ -348,12 +348,15 @@ const Appointments = () => {
             .map((id) => appointments.find((t) => t.id === id)!)
             .filter(Boolean);
 
-    // const payload = appointmentsToProcess.map((appointment) => ({
-    //   id_titulo: appointment.id,
-    // }));
+    const payload = appointmentsToProcess.map((appointment) => ({
+      id: appointment.id,
+      order_id: appointment.target_id,
+      name: appointment.title,
+      type: appointment.event_type_name
+    }));
 
     try {
-      await callAPIN8N(null, { Agendamento: appointmentsToProcess}, "scheduling/clear_accounts");
+      await callAPIN8N(null, { Agendamento: payload}, "scheduling/clear_accounts");
 
       if (processAppointmentModal.type === "single") {
         toast({

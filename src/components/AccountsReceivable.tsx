@@ -427,7 +427,7 @@ const AccountsReceivable = () => {
     }));
 
     try {
-      await callAPIN8N(null, { Titulo: payload, type: "ar" }, "clear_accounts");
+      await callAPIN8N(null, { Titulo: payload, type: "ar" }, "finance/clear_accounts");
 
       if (paymentModal.type === "single") {
         toast({
@@ -495,7 +495,7 @@ const AccountsReceivable = () => {
         },
       ];
 
-      await callAPIN8N(null, { Titulo: payload, type: "ar" }, "clear_accounts");
+      await callAPIN8N(null, { Titulo: payload, type: "ar" }, "finance/clear_accounts");
 
       toast({
         title: "Reprocessamento bem-sucedido",

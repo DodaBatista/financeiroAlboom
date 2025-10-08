@@ -221,7 +221,7 @@ const AccountsReceivable = () => {
         pageNumber: currentPage,
         pageSize: itemsPerPage,
         groupBy: null,
-        sortBy: effectiveSort ? effectiveSort.key : "account_trans.due_date",
+        sortBy: effectiveSort ? `account_trans.${effectiveSort.key}` : "account_trans.due_date",
         sortDir: effectiveSort ? effectiveSort.direction : "DESC",
         searchTerm: "",
         period: "other",

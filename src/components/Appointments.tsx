@@ -28,6 +28,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  FileSpreadsheet,
   Loader2,
   RotateCcw,
   Search,
@@ -134,6 +135,8 @@ const Appointments = () => {
   }>({ isOpen: false });
 
   const [hasFetchedInitialList, setHasFetchedInitialList] = useState(false);
+  const [hasFetchedProcessedInitialList, setHasFetchedProcessedInitialList] =
+    useState(false);
 
   const fetchEventTypes = async () => {
     try {
@@ -233,6 +236,7 @@ const Appointments = () => {
           "Não foi possível carregar a lista de registros processados.",
         variant: "destructive",
       });
+      console.log("Error: " + error);
     } finally {
       setRequestsLoading(false);
     }
@@ -248,15 +252,35 @@ const Appointments = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === "requests" && !processedStartDate && !processedEndDate) {
+    if (
+      activeTab === "requests" &&
+      (!processedStartDate || !processedEndDate)
+    ) {
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
       setProcessedStartDate(firstDay.toISOString().split("T")[0]);
       setProcessedEndDate(lastDay.toISOString().split("T")[0]);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (
+      activeTab === "requests" &&
+      processedStartDate &&
+      processedEndDate &&
+      !hasFetchedProcessedInitialList
+    ) {
+      fetchProcessedAppointments();
+      setHasFetchedProcessedInitialList(true);
+    }
+  }, [activeTab, processedStartDate, processedEndDate]);
+
+  useEffect(() => {
+    if (activeTab === "requests") {
+      fetchProcessedAppointments();
+    }
+  }, [processedCurrentPage, processedItemsPerPage]);
 
   useEffect(() => {
     if (!hasFetchedInitialList && startDate && endDate) {
@@ -276,25 +300,17 @@ const Appointments = () => {
   }, [currentPage, itemsPerPage]);
 
   useEffect(() => {
-    if (activeTab === "requests" && processedStartDate && processedEndDate) {
-      fetchProcessedAppointments();
-    }
-  }, [
-    activeTab,
-    selectedStatus,
-    selectedProcessedEventType,
-    processedCurrentPage,
-    processedItemsPerPage,
-    processedStartDate,
-    processedEndDate,
-  ]);
-
-  useEffect(() => {
     setSortConfig({ key: "start_date", direction: "ASC" });
   }, []);
 
   const totalPages = Math.ceil(totalAppointments / itemsPerPage);
   const paginatedAppointments = filteredAppointments;
+
+  const handleFilterProcessed = () => {
+    setHasFetchedProcessedInitialList(false);
+    setProcessedCurrentPage(1);
+    fetchProcessedAppointments();
+  };
 
   const handleExportProcessed = async () => {
     try {
@@ -544,13 +560,6 @@ const Appointments = () => {
 
     setReprocessModal({ isOpen: false });
   };
-
-  const filteredProcessedAppointments =
-    selectedStatus === "default" || !selectedStatus
-      ? processedAppointments
-      : processedAppointments.filter(
-          (request) => request.status === selectedStatus
-        );
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -1155,7 +1164,7 @@ const Appointments = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                       <label className="text-sm font-medium mb-2 block">
                         Data Inicial
@@ -1226,18 +1235,51 @@ const Appointments = () => {
                       </Select>
                     </div>
 
-                    {filteredProcessedAppointments.length > 0 && (
-                      <div className="flex items-end">
+                    {/* Mobile: layout empilhado */}
+                    <div className="block md:hidden space-y-4 mt-4">
+                      <div className="flex flex-col gap-4">
+                        <Button
+                          onClick={handleFilterProcessed}
+                          disabled={requestsLoading}
+                          className="w-full"
+                          variant="default"
+                        >
+                          <Search className="h-4 w-4 mr-2" />
+                          Filtrar
+                        </Button>
+
                         <Button
                           onClick={handleExportProcessed}
                           variant="outline"
-                          className="flex items-center gap-2"
+                          disabled={processedAppointments.length === 0}
+                          className="w-full"
                         >
-                          <RotateCcw className="h-4 w-4" />
+                          <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" />
                           Exportar Excel
                         </Button>
                       </div>
-                    )}
+                    </div>
+
+                    {/* Desktop: layout em linha única */}
+                    <div className="hidden md:flex items-end gap-4 mt-4">
+                      <Button
+                        onClick={handleFilterProcessed}
+                        disabled={requestsLoading}
+                        variant="default"
+                      >
+                        <Search className="h-4 w-4 mr-2" />
+                        Filtrar
+                      </Button>
+
+                      <Button
+                        onClick={handleExportProcessed}
+                        variant="outline"
+                        disabled={processedAppointments.length === 0}
+                      >
+                        <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" />
+                        Exportar Excel
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1283,7 +1325,7 @@ const Appointments = () => {
                               </div>
                             </td>
                           </tr>
-                        ) : filteredProcessedAppointments.length === 0 ? (
+                        ) : processedAppointments.length === 0 ? (
                           <tr>
                             <td
                               colSpan={7}
@@ -1294,7 +1336,7 @@ const Appointments = () => {
                             </td>
                           </tr>
                         ) : (
-                          filteredProcessedAppointments
+                          processedAppointments
                             .filter((req) => req?.id)
                             .map((request) => (
                               <tr
@@ -1367,7 +1409,7 @@ const Appointments = () => {
                     )}
 
                     {!requestsLoading &&
-                      filteredProcessedAppointments.length === 0 && (
+                      processedAppointments.length === 0 && (
                         <div className="text-center p-8 text-muted-foreground">
                           Nenhum registro encontrado com os filtros
                           selecionados.
@@ -1375,7 +1417,7 @@ const Appointments = () => {
                       )}
 
                     {!requestsLoading &&
-                      filteredProcessedAppointments
+                      processedAppointments
                         .filter((req) => req?.id)
                         .map((request) => (
                           <Card key={String(request.id)} className="shadow-sm">

@@ -1,5 +1,5 @@
 import { callAPI } from "@/utils/api";
-import { getProcessedAppointments } from "./processedAppointmentsService";
+import { getCompanyFromUrl } from "../utils/company";
 
 export interface AppointmentQuery {
     pageNumber: number;
@@ -10,6 +10,7 @@ export interface AppointmentQuery {
     status?: string;
     sortBy?: string;
     sortDir?: "ASC" | "DESC";
+    searchTerm?: string;
 }
 
 interface FetchAppointmentsResponse {
@@ -17,50 +18,33 @@ interface FetchAppointmentsResponse {
     total: number;
 }
 
-export const fetchAppointmentsService = async (params: any): Promise<{ appointments: any[]; total: number }> => {
-    try {
-        const requestData = {
-            start_type: "other",
-            type: params.type || "",
-            class_id: "all",
-            status: params.status || "All",
-            user: "all",
-            pageNumber: params.pageNumber || 1,
-            pageSize: params.pageSize || 100,
-            sortBy: params.sortBy || "start_date",
-            sortDir: params.sortDir || "ASC",
-            searchTerm: params.searchTerm || "",
-            start_date: params.start_date,
-            end_date: params.end_date,
-            is_csv: 0,
-        };
+export const fetchAppointments = async (params: AppointmentQuery): Promise<FetchAppointmentsResponse> => {
+    const empresa = getCompanyFromUrl();
 
-        const response = await callAPI(
-            "events/paginate",
-            requestData,
-            "POST"
-        );
+    const requestData = {
+        start_type: "other",
+        type: params.type || "",
+        class_id: "all",
+        status: params.status || "All",
+        user: "all",
+        pageNumber: params.pageNumber || 1,
+        pageSize: params.pageSize || 100,
+        sortBy: params.sortBy || "start_date",
+        sortDir: params.sortDir || "ASC",
+        searchTerm: params.searchTerm || "",
+        start_date: params.start_date,
+        end_date: params.end_date,
+        is_csv: 0,
+    };
+    try {
+        const response = await callAPI("events/paginate", requestData, "POST");
 
         return {
             appointments: response.rows || [],
             total: parseInt(response.count || "0", 10),
         };
     } catch (error) {
-        console.error("Erro ao buscar agendamentos:", error);
+        console.error("Fetch appointments failed:", error);
         throw error;
     }
-};
-
-export const fetchFilteredAppointmentsService = async (
-    query: AppointmentQuery
-): Promise<FetchAppointmentsResponse> => {
-    const { appointments, total } = await fetchAppointmentsService(query);
-
-    const processed = await getProcessedAppointments();
-
-    const filtered = appointments.filter(
-        (a) => !processed.some((p) => p.id === a.id)
-    );
-
-    return { appointments: filtered, total };
 };

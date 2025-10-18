@@ -29,16 +29,18 @@ import {
   ChevronUp,
   Clock,
   Loader2,
-  RefreshCw,
   RotateCcw,
   Search,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { fetchFilteredAppointmentsService } from "@/services/appointmentService";
+import { fetchAppointments as fetchAppointmentsService } from "@/services/appointmentService";
 import { fetchEventTypesService } from "@/services/eventTypeService";
-import { getProcessedAppointments } from "@/services/processedAppointmentsService";
+import {
+  exportProcessedAppointments,
+  getProcessedAppointments,
+} from "@/services/processedAppointmentsService";
 import { callAPIN8N } from "@/utils/api";
 
 interface Appointment {
@@ -66,6 +68,10 @@ interface AppointmentProcessed {
   order_id: string;
   type_event: string;
   mensagem: string;
+  empresa: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
 }
 
 const Appointments = () => {
@@ -78,7 +84,7 @@ const Appointments = () => {
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [selectedEventType, setSelectedEventType] = useState("");
+  const [selectedEventType, setSelectedEventType] = useState("all");
   const [reprocessingLoading, setReprocessingLoading] = useState(false);
   const [processAppointmentLoading, setProcessAppointmentLoading] =
     useState(false);
@@ -106,6 +112,14 @@ const Appointments = () => {
   const [activeTab, setActiveTab] = useState("appointments");
 
   const [selectedStatus, setSelectedStatus] = useState("default");
+
+  const [selectedProcessedEventType, setSelectedProcessedEventType] =
+    useState("");
+  const [processedCurrentPage, setProcessedCurrentPage] = useState(1);
+  const [processedItemsPerPage, setProcessedItemsPerPage] = useState(100);
+  const [totalProcessed, setTotalProcessed] = useState(0);
+  const [processedStartDate, setProcessedStartDate] = useState("");
+  const [processedEndDate, setProcessedEndDate] = useState("");
 
   const [processAppointmentModal, setProcessAppointmentModal] = useState<{
     isOpen: boolean;
@@ -149,7 +163,7 @@ const Appointments = () => {
         pageSize: itemsPerPage,
         start_date: startDate,
         end_date: endDate,
-        type: selectedEventType || "",
+        type: selectedEventType === "all" ? "" : selectedEventType,
         status:
           selectedAppointmentStatus !== "all" ? selectedAppointmentStatus : "",
       };
@@ -160,7 +174,7 @@ const Appointments = () => {
         requestData.sortDir = effectiveSort.direction;
       }
 
-      const { appointments, total } = await fetchFilteredAppointmentsService(
+      const { appointments, total } = await fetchAppointmentsService(
         requestData
       );
 
@@ -181,8 +195,37 @@ const Appointments = () => {
   const fetchProcessedAppointments = async () => {
     setRequestsLoading(true);
     try {
-      const response = await getProcessedAppointments();
-      setProcessedAppointments(response || []);
+      const filters = {
+        page: processedCurrentPage,
+        limit: processedItemsPerPage,
+        status: selectedStatus === "default" ? "" : selectedStatus,
+        type_event:
+          selectedProcessedEventType === "all"
+            ? ""
+            : selectedProcessedEventType,
+        start_date: processedStartDate,
+        end_date: processedEndDate,
+      };
+
+      const response = await getProcessedAppointments(filters);
+
+      let data = response?.data || [];
+
+      if (Array.isArray(data) && data.length === 1 && Array.isArray(data[0])) {
+        data = data[0];
+      }
+
+      if (Array.isArray(data)) {
+        data = data.filter(
+          (item) =>
+            item &&
+            Object.keys(item).length > 0 &&
+            Object.values(item).some((v) => v !== null && v !== "")
+        );
+      }
+
+      setProcessedAppointments(Array.isArray(data) ? data : []);
+      setTotalProcessed(response?.pagination?.totalItems || 0);
     } catch (error) {
       toast({
         title: "Erro ao carregar processamentos solicitados",
@@ -205,6 +248,17 @@ const Appointments = () => {
   }, []);
 
   useEffect(() => {
+    if (activeTab === "requests" && !processedStartDate && !processedEndDate) {
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      setProcessedStartDate(firstDay.toISOString().split("T")[0]);
+      setProcessedEndDate(lastDay.toISOString().split("T")[0]);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
     if (!hasFetchedInitialList && startDate && endDate) {
       fetchAppointments();
       setHasFetchedInitialList(true);
@@ -222,10 +276,18 @@ const Appointments = () => {
   }, [currentPage, itemsPerPage]);
 
   useEffect(() => {
-    if (activeTab === "requests") {
+    if (activeTab === "requests" && processedStartDate && processedEndDate) {
       fetchProcessedAppointments();
     }
-  }, [activeTab]);
+  }, [
+    activeTab,
+    selectedStatus,
+    selectedProcessedEventType,
+    processedCurrentPage,
+    processedItemsPerPage,
+    processedStartDate,
+    processedEndDate,
+  ]);
 
   useEffect(() => {
     setSortConfig({ key: "start_date", direction: "ASC" });
@@ -233,6 +295,38 @@ const Appointments = () => {
 
   const totalPages = Math.ceil(totalAppointments / itemsPerPage);
   const paginatedAppointments = filteredAppointments;
+
+  const handleExportProcessed = async () => {
+    try {
+      const payload = {
+        status: selectedStatus === "default" ? "" : selectedStatus,
+        type_event:
+          selectedProcessedEventType === "all"
+            ? ""
+            : selectedProcessedEventType,
+        start_date: processedStartDate,
+        end_date: processedEndDate,
+      };
+
+      toast({
+        title: "Gerando arquivo...",
+        description: "A exportação está sendo processada.",
+      });
+
+      await exportProcessedAppointments(payload);
+
+      toast({
+        title: "Exportação concluída",
+        description: "O arquivo Excel foi baixado com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro na exportação",
+        description: "Não foi possível gerar o arquivo Excel.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleFilter = () => {
     setCurrentPage(1);
@@ -352,11 +446,15 @@ const Appointments = () => {
       id: appointment.id,
       order_id: appointment.target_id,
       name: appointment.title,
-      type: appointment.event_type_name
+      type: appointment.event_type_name,
     }));
 
     try {
-      await callAPIN8N(null, { Agendamento: payload}, "scheduling/clear_accounts");
+      await callAPIN8N(
+        null,
+        { Agendamento: payload },
+        "scheduling/clear_accounts"
+      );
 
       if (processAppointmentModal.type === "single") {
         toast({
@@ -420,7 +518,11 @@ const Appointments = () => {
         },
       ];
 
-      await callAPIN8N(null, { Agendamento: payload}, "scheduling/clear_accounts");
+      await callAPIN8N(
+        null,
+        { Agendamento: payload },
+        "scheduling/clear_accounts"
+      );
 
       toast({
         title: "Reprocessamento bem-sucedido",
@@ -849,6 +951,13 @@ const Appointments = () => {
                       loading ? "opacity-50" : ""
                     }`}
                   >
+                    {loading && (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                        <span>Carregando agendamentos...</span>
+                      </div>
+                    )}
+
                     {(() => {
                       const validAppointments = paginatedAppointments.filter(
                         (appointment) => appointment.id
@@ -1046,7 +1155,31 @@ const Appointments = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">
+                        Data Inicial
+                      </label>
+                      <Input
+                        type="date"
+                        value={processedStartDate}
+                        onChange={(e) => setProcessedStartDate(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">
+                        Data Final
+                      </label>
+                      <Input
+                        type="date"
+                        value={processedEndDate}
+                        onChange={(e) => setProcessedEndDate(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+
                     <div>
                       <label className="text-sm font-medium mb-2 block">
                         Status
@@ -1071,16 +1204,40 @@ const Appointments = () => {
                       </Select>
                     </div>
 
-                    <div className="flex items-end">
-                      <Button
-                        onClick={handleRefresh}
-                        className="w-full"
-                        variant="outline"
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">
+                        Tipo de Evento
+                      </label>
+                      <Select
+                        value={selectedProcessedEventType}
+                        onValueChange={setSelectedProcessedEventType}
                       >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Atualizar
-                      </Button>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 max-h-[300px] overflow-y-auto bg-popover">
+                          <SelectItem value="all">Todos os tipos</SelectItem>
+                          {eventTypes.map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
+
+                    {filteredProcessedAppointments.length > 0 && (
+                      <div className="flex items-end">
+                        <Button
+                          onClick={handleExportProcessed}
+                          variant="outline"
+                          className="flex items-center gap-2"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          Exportar Excel
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -1088,18 +1245,8 @@ const Appointments = () => {
               {/* Tabela de Registros Processados */}
               <Card className="shadow-financial animate-fade-in">
                 <CardContent className="p-0">
-                  {requestsLoading && (
-                    <div className="flex items-center justify-center p-8">
-                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                      <span>Carregando registros processados...</span>
-                    </div>
-                  )}
                   {/* Desktop Table */}
-                  <div
-                    className={`hidden lg:block overflow-x-auto ${
-                      requestsLoading ? "opacity-50" : ""
-                    }`}
-                  >
+                  <div className="hidden lg:block overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-muted/50 border-b">
                         <tr>
@@ -1119,59 +1266,88 @@ const Appointments = () => {
                             Mensagem
                           </th>
                           <th className="p-4 text-left text-sm font-medium">
+                            Data de Processamento
+                          </th>
+                          <th className="p-4 text-left text-sm font-medium">
                             Ação
                           </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredProcessedAppointments.length === 0 &&
-                        !requestsLoading ? (
+                        {requestsLoading ? (
+                          <tr>
+                            <td colSpan={7} className="p-8 text-center">
+                              <div className="flex items-center justify-center">
+                                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                <span>Carregando registros processados...</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : filteredProcessedAppointments.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={4}
+                              colSpan={7}
                               className="p-8 text-center text-muted-foreground"
                             >
-                              Nenhum registro encontrado.
+                              Nenhum registro encontrado com os filtros
+                              selecionados.
                             </td>
                           </tr>
                         ) : (
-                          filteredProcessedAppointments.map((request) => (
-                            <tr
-                              key={request.id}
-                              className="border-b hover:bg-muted/20 transition-colors"
-                            >
-                              <td className="p-4">
-                                <Badge variant="outline">{request.id}</Badge>
-                              </td>
-                              <td className="p-4">
-                                <Badge
-                                  variant={getStatusBadgeVariant(
-                                    request.status
-                                  )}
-                                >
-                                  <span className="flex items-center">
-                                    {getStatusBadgeIcon(request.status)}
-                                    {request.status}
-                                  </span>
-                                </Badge>
-                              </td>
-                              <td className="p-4">{request.order_id}</td>
-                              <td className="p-4">{request.type_event}</td>
-                              <td className="p-4">{request.mensagem}</td>
-                              <td className="p-4">
-                                {request.status === "Erro" && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleReprocess(request.id)}
+                          filteredProcessedAppointments
+                            .filter((req) => req?.id)
+                            .map((request) => (
+                              <tr
+                                key={String(request.id)}
+                                className="border-b hover:bg-muted/20 transition-colors"
+                              >
+                                <td className="p-4">
+                                  <Badge variant="outline">{request.id}</Badge>
+                                </td>
+                                <td className="p-4">
+                                  <Badge
+                                    variant={getStatusBadgeVariant(
+                                      request.status
+                                    )}
                                   >
-                                    <RotateCcw className="h-4 w-4 mr-1" />
-                                    Reprocessar
-                                  </Button>
-                                )}
-                              </td>
-                            </tr>
-                          ))
+                                    <span className="flex items-center">
+                                      {getStatusBadgeIcon(request.status)}
+                                      {request.status}
+                                    </span>
+                                  </Badge>
+                                </td>
+                                <td className="p-4">{request.order_id}</td>
+                                <td className="p-4">{request.type_event}</td>
+                                <td className="p-4">{request.mensagem}</td>
+                                <td className="p-4">
+                                  {request.updated_at
+                                    ? new Date(
+                                        request.updated_at
+                                      ).toLocaleString("pt-BR", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
+                                    : "-"}
+                                </td>
+                                <td className="p-4">
+                                  {request.status === "Erro" && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() =>
+                                        handleReprocess(request.id)
+                                      }
+                                    >
+                                      <RotateCcw className="h-4 w-4 mr-1" />
+                                      Reprocessar
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))
                         )}
                       </tbody>
                     </table>
@@ -1183,63 +1359,172 @@ const Appointments = () => {
                       requestsLoading ? "opacity-50" : ""
                     }`}
                   >
-                    {filteredProcessedAppointments.map((request) => (
-                      <Card key={request.id} className="shadow-sm">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <Badge variant="outline">{request.id}</Badge>
-                            <Badge
-                              variant={getStatusBadgeVariant(request.status)}
-                            >
-                              {request.status}
-                            </Badge>
-                          </div>
+                    {requestsLoading && (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                        <span>Carregando processados...</span>
+                      </div>
+                    )}
 
-                          <div className="space-y-2">
-                            <div className="space-y-2">
-                              <div className="flex justify-between">
-                                <span className="text-sm text-muted-foreground">
-                                  Pedido:
-                                </span>
-                                <span className="text-sm">
-                                  {request.order_id}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-sm text-muted-foreground">
-                                  Tipo:
-                                </span>
-                                <span className="text-sm">
-                                  {request.type_event}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-sm text-muted-foreground">
-                                  Mensagem:
-                                </span>
-                                <span className="text-sm">
-                                  {request.mensagem}
-                                </span>
-                              </div>
-                            </div>
+                    {!requestsLoading &&
+                      filteredProcessedAppointments.length === 0 && (
+                        <div className="text-center p-8 text-muted-foreground">
+                          Nenhum registro encontrado com os filtros
+                          selecionados.
+                        </div>
+                      )}
 
-                            {request.status === "Erro" && (
-                              <div className="mt-3">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReprocess(request.id)}
-                                  className="w-full"
+                    {!requestsLoading &&
+                      filteredProcessedAppointments
+                        .filter((req) => req?.id)
+                        .map((request) => (
+                          <Card key={String(request.id)} className="shadow-sm">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <Badge variant="outline">{request.id}</Badge>
+                                <Badge
+                                  variant={getStatusBadgeVariant(
+                                    request.status
+                                  )}
                                 >
-                                  <RotateCcw className="h-4 w-4 mr-1" />
-                                  Reprocessar
-                                </Button>
+                                  {request.status}
+                                </Badge>
                               </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+
+                              <div className="space-y-2">
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-muted-foreground">
+                                    Pedido:
+                                  </span>
+                                  <span className="text-sm">
+                                    {request.order_id}
+                                  </span>
+                                </div>
+
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-muted-foreground">
+                                    Tipo:
+                                  </span>
+                                  <span className="text-sm">
+                                    {request.type_event}
+                                  </span>
+                                </div>
+
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-muted-foreground">
+                                    Mensagem:
+                                  </span>
+                                  <span className="text-sm">
+                                    {request.mensagem}
+                                  </span>
+                                </div>
+
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-muted-foreground">
+                                    Data de Processamento:
+                                  </span>
+                                  <span className="text-sm">
+                                    {request.updated_at
+                                      ? new Date(
+                                          request.updated_at
+                                        ).toLocaleString("pt-BR", {
+                                          day: "2-digit",
+                                          month: "2-digit",
+                                          year: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })
+                                      : "-"}
+                                  </span>
+                                </div>
+
+                                {request.status === "Erro" && (
+                                  <div className="mt-3">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() =>
+                                        handleReprocess(request.id)
+                                      }
+                                      className="w-full"
+                                    >
+                                      <RotateCcw className="h-4 w-4 mr-1" />
+                                      Reprocessar
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-card mt-4">
+                <CardContent className="py-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-muted-foreground">
+                        Página {processedCurrentPage} de{" "}
+                        {Math.ceil(totalProcessed / processedItemsPerPage)}
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          Itens por página:
+                        </span>
+                        <Select
+                          value={processedItemsPerPage.toString()}
+                          onValueChange={(value) => {
+                            setProcessedItemsPerPage(Number(value));
+                            setProcessedCurrentPage(1);
+                          }}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                            <SelectItem value="150">150</SelectItem>
+                            <SelectItem value="200">200</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setProcessedCurrentPage((p) => Math.max(1, p - 1))
+                        }
+                        disabled={processedCurrentPage === 1 || requestsLoading}
+                      >
+                        Anterior
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setProcessedCurrentPage((p) =>
+                            Math.min(
+                              Math.ceil(totalProcessed / processedItemsPerPage),
+                              p + 1
+                            )
+                          )
+                        }
+                        disabled={
+                          processedCurrentPage * processedItemsPerPage >=
+                            totalProcessed || requestsLoading
+                        }
+                      >
+                        Próxima
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

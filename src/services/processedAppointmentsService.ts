@@ -1,40 +1,88 @@
-import { API_BASE_URL, clearAuthTokens, getAuthTokens } from "../utils/api";
+import { clearAuthTokens, getAuthTokens } from "../utils/api";
 import { getCompanyFromUrl } from "../utils/company";
 
-export const getProcessedAppointments = async (): Promise<any> => {
+export const API_BASE_URL = 'https://fluxo.riapp.app/webhook/scheduling';
+
+export const getProcessedAppointments = async (filters: any): Promise<any> => {
   const empresa = getCompanyFromUrl();
   const tokens = getAuthTokens();
 
-  if (!tokens) {
-    throw new Error("No authentication tokens available");
+  if (!tokens) throw new Error("No authentication tokens available");
+
+  const payload = {
+    empresa,
+    page: filters?.page || 1,
+    limit: filters?.limit || 100,
+    status: filters?.status || "",
+    type_event: filters?.type_event || "",
+    start_date: filters?.start_date || "",
+    end_date: filters?.end_date || "",
+  };
+
+  const response = await fetch(`${API_BASE_URL}/processed`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "iduseralboom": "",
+      "tokenalboom": tokens.tokenAlboom,
+      Authorization: `Bearer ${tokens.token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      clearAuthTokens();
+      window.location.href = "/login";
+      throw new Error("Session expired. Please login again.");
+    }
+    throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  try {
-    const url = `${API_BASE_URL}/scheduling/processed?empresa=${empresa}`;
+  const result = await response.json();
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "iduseralboom": "",
-        "tokenalboom": tokens.tokenAlboom,
-        Authorization: `Bearer ${tokens.token}`,
-      },
-    });
+  const parsed = Array.isArray(result) ? result[0] : result;
+
+  return {
+    success: parsed?.success || false,
+    data: parsed?.data || [],
+    pagination: parsed?.pagination || {},
+  };
+};
+
+export async function exportProcessedAppointments(filters: any) {
+  try {
+    const empresa = getCompanyFromUrl();
+    filters = { empresa, ...filters };
+
+    const response = await fetch(
+      `${API_BASE_URL}/processed/export`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(filters),
+      }
+    );
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        clearAuthTokens();
-        window.location.href = "/login";
-        throw new Error("Session expired. Please login again.");
-      }
-
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error("Falha ao exportar registros processados.");
     }
 
-    return await response.json();
+    // 🔽 Recebe o arquivo binário
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    // 💾 Cria link para download
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `processados_${new Date().toISOString().split("T")[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    window.URL.revokeObjectURL(url);
   } catch (error) {
-    console.error("Get processed appointments failed:", error);
+    console.error("Erro na exportação:", error);
     throw error;
   }
-};
+}

@@ -1227,7 +1227,7 @@ const Appointments = () => {
                         <SelectContent className="z-50 max-h-[300px] overflow-y-auto bg-popover">
                           <SelectItem value="all">Todos os tipos</SelectItem>
                           {eventTypes.map((type) => (
-                            <SelectItem key={type.id} value={type.id}>
+                            <SelectItem key={type.id} value={type.name}>
                               {type.name}
                             </SelectItem>
                           ))}

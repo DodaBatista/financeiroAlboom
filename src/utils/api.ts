@@ -1,6 +1,6 @@
 import { getCompanyFromUrl } from './company';
 
-export const API_BASE_URL = 'https://fluxo.riapp.app/webhook/finance';
+export const API_BASE_URL = 'https://n8np7.risystems.online/webhook/finance';
 
 interface AuthTokens {
   token: string;
@@ -74,7 +74,7 @@ export const callAPI = async (
 export const callAPIN8N = async (endpoint: string, data: any = {}, uri: string = null): Promise<any> => {
   const empresa = getCompanyFromUrl();
 
-  const API_BASE_URL = 'https://fluxo.riapp.app/webhook';
+  const API_BASE_URL = 'https://n8np7.risystems.online/webhook';
 
   const formattedURL = uri ? API_BASE_URL + "/" + uri : API_BASE_URL;
 

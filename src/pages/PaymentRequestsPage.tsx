@@ -176,9 +176,6 @@ const PaymentRequestsPage: React.FC = () => {
   const [formLinkApproverDepartmentId, setFormLinkApproverDepartmentId] = useState('');
   const [formLinkApproverDirectorId, setFormLinkApproverDirectorId] = useState('');
   const [linkFormLoading, setLinkFormLoading] = useState(false);
-  const [userComboOpen, setUserComboOpen] = useState(false);
-  const [approverDeptComboOpen, setApproverDeptComboOpen] = useState(false);
-  const [approverDirComboOpen, setApproverDirComboOpen] = useState(false);
 
   // Funções auxiliares para telefone e email
   const formatPhoneNumber = (value: string): string => {
@@ -304,11 +301,21 @@ const PaymentRequestsPage: React.FC = () => {
 
   // Map approval values from API to label and badge variant
   type BadgeVariant = 'success' | 'destructive' | 'secondary' | 'default' | 'outline';
+  // Normalizar valores de aprovação (aceita português e inglês)
+  const normalizeApprovalValue = (val: any): string => {
+    if (!val) return 'PENDING';
+    const normalized = String(val).toUpperCase().trim();
+    if (normalized === 'APROVADO' || normalized === 'APPROVED') return 'APPROVED';
+    if (normalized === 'REPROVADO' || normalized === 'REPROVED') return 'REPROVED';
+    if (normalized === 'PENDENTE' || normalized === 'PENDING' || normalized === 'AGUARDANDO') return 'PENDING';
+    return 'PENDING';
+  };
+
   const mapApproval = (val: any): { label: string; variant: BadgeVariant } => {
-    if (val === 'APPROVED') return { label: 'Aprovado', variant: 'success' };
-    if (val === 'REPROVED') return { label: 'Reprovado', variant: 'destructive' };
-    if (val === 'PENDING') return { label: 'Pendente', variant: 'secondary' };
-    // Fallback para qualquer outro valor (null, undefined, etc)
+    const normalized = normalizeApprovalValue(val);
+    if (normalized === 'APPROVED') return { label: 'Aprovado', variant: 'success' };
+    if (normalized === 'REPROVED') return { label: 'Reprovado', variant: 'destructive' };
+    if (normalized === 'PENDING') return { label: 'Pendente', variant: 'secondary' };
     return { label: 'Pendente', variant: 'secondary' };
   };
 
@@ -742,7 +749,7 @@ const PaymentRequestsPage: React.FC = () => {
     try {
       // Verificar se todas as solicitações têm aprovação de departamento
       const requestsToSend = requests.filter(r => ids.includes(r.id));
-      const notApproved = requestsToSend.filter(r => r.approved_department !== 'APPROVED');
+      const notApproved = requestsToSend.filter(r => normalizeApprovalValue(r.approved_department) !== 'APPROVED');
       
       if (notApproved.length > 0) {
         toast({
@@ -778,7 +785,7 @@ const PaymentRequestsPage: React.FC = () => {
   const openSendToSystemModal = (ids: string[]) => {
     // Verificar se todas as solicitações têm aprovação de departamento
     const requestsToSend = requests.filter(r => ids.includes(r.id));
-    const notApproved = requestsToSend.filter(r => r.approved_department !== 'APPROVED');
+    const notApproved = requestsToSend.filter(r => normalizeApprovalValue(r.approved_department) !== 'APPROVED');
     
     if (notApproved.length > 0) {
       toast({
@@ -1664,19 +1671,19 @@ const PaymentRequestsPage: React.FC = () => {
                                   <Eye className="h-4 w-4 mr-2" />
                                   Visualizar
                                 </DropdownMenuItem>
-                                {r.approved_department === 'PENDING' && r.approved_director === 'PENDING' && (
+                                {normalizeApprovalValue(r.approved_department) === 'PENDING' && normalizeApprovalValue(r.approved_director) === 'PENDING' && (
                                   <DropdownMenuItem onClick={() => openDeleteConfirm(r.id)} className="text-destructive">
                                     <Trash2 className="h-4 w-4 mr-2" />
                                     Excluir
                                   </DropdownMenuItem>
                                 )}
-                                {r.approved_department === 'APPROVED' && r.approved_director === 'PENDING' && (
+                                {normalizeApprovalValue(r.approved_department) === 'APPROVED' && normalizeApprovalValue(r.approved_director) === 'PENDING' && (
                                   <DropdownMenuItem onClick={() => handleSendToDirector([r.id])}>
                                     <Send className="h-4 w-4 mr-2" />
                                     Enviar p/ Diretor
                                   </DropdownMenuItem>
                                 )}
-                                {r.approved_department === 'APPROVED' && (
+                                {normalizeApprovalValue(r.approved_department) === 'APPROVED' && (
                                   <DropdownMenuItem onClick={() => openSendToSystemModal([r.id])} className="text-primary">
                                     <Send className="h-4 w-4 mr-2" />
                                     Enviar p/ Sistema
@@ -1762,17 +1769,17 @@ const PaymentRequestsPage: React.FC = () => {
                         <Button size="sm" variant="ghost" onClick={() => handleView(r)}>
                           <Eye className="h-4 w-4"/>
                         </Button>
-                        {r.approved_department === 'PENDING' && r.approved_director === 'PENDING' && (
+                        {normalizeApprovalValue(r.approved_department) === 'PENDING' && normalizeApprovalValue(r.approved_director) === 'PENDING' && (
                           <Button size="sm" variant="destructive" onClick={()=>openDeleteConfirm(r.id)}>
                             <Trash2 className="h-4 w-4"/>
                           </Button>
                         )}
-                        {r.approved_department === 'APPROVED' && r.approved_director === 'PENDING' && (
+                        {normalizeApprovalValue(r.approved_department) === 'APPROVED' && normalizeApprovalValue(r.approved_director) === 'PENDING' && (
                           <Button size="sm" variant="outline" onClick={() => handleSendToDirector([r.id])}>
                             <Send className="h-4 w-4"/>
                           </Button>
                         )}
-                        {r.approved_department === 'APPROVED' && (
+                        {normalizeApprovalValue(r.approved_department) === 'APPROVED' && (
                           <Button size="sm" variant="default" className="bg-primary hover:bg-primary/90" onClick={() => openSendToSystemModal([r.id])}>
                             <Send className="h-4 w-4"/>
                           </Button>
@@ -2520,152 +2527,58 @@ const PaymentRequestsPage: React.FC = () => {
           <div className="space-y-4 py-4">
             <div>
               <Label>Usuário *</Label>
-              <Popover open={userComboOpen} onOpenChange={setUserComboOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={userComboOpen}
-                    className="w-full justify-between"
-                    disabled={linkEditMode}
-                  >
-                    {formLinkUserId
-                      ? allWhatsappUsers.find((user) => user.id === formLinkUserId)?.name_user || formLinkUserId
-                      : "Selecione um usuário..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Buscar usuário..." />
-                    <CommandList>
-                      <CommandEmpty>
-                        {allWhatsappUsers.length === 0 ? 'Carregando usuários...' : 'Nenhum usuário encontrado.'}
-                      </CommandEmpty>
-                      <CommandGroup>
-                        {allWhatsappUsers.map((user) => (
-                            <CommandItem
-                              key={user.id}
-                              value={user.id}
-                              onSelect={(currentValue) => {
-                                setFormLinkUserId(currentValue);
-                                setUserComboOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={`mr-2 h-4 w-4 ${
-                                  formLinkUserId === user.id ? "opacity-100" : "opacity-0"
-                                }`}
-                              />
-                              <div className="flex flex-col">
-                                <span className="font-medium">{user.name_user}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {user.phone_user}
-                                </span>
-                              </div>
-                            </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Select
+                value={formLinkUserId}
+                onValueChange={setFormLinkUserId}
+                disabled={linkEditMode}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um usuário..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allWhatsappUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name_user}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Aprovador Departamento *</Label>
-              <Popover open={approverDeptComboOpen} onOpenChange={setApproverDeptComboOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={approverDeptComboOpen}
-                    className="w-full justify-between"
-                  >
-                    {formLinkApproverDepartmentId
-                      ? allWhatsappUsers.find((user) => user.id === formLinkApproverDepartmentId)?.name_user || formLinkApproverDepartmentId
-                      : "Selecione aprovador departamento..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Buscar aprovador..." />
-                    <CommandList>
-                      <CommandEmpty>Nenhum aprovador encontrado.</CommandEmpty>
-                      <CommandGroup>
-                        {allWhatsappUsers.filter((user) => user.id !== formLinkUserId).map((user) => (
-                            <CommandItem
-                              key={user.id}
-                              value={`${user.name_user} ${user.phone_user}`}
-                              onSelect={() => {
-                                setFormLinkApproverDepartmentId(user.id);
-                                setApproverDeptComboOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={`mr-2 h-4 w-4 ${
-                                  formLinkApproverDepartmentId === user.id ? "opacity-100" : "opacity-0"
-                                }`}
-                              />
-                              <div className="flex flex-col">
-                                <span className="font-medium">{user.name_user}</span>
-                                <span className="text-xs text-muted-foreground">{user.phone_user}</span>
-                              </div>
-                            </CommandItem>
-                          ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Select
+                value={formLinkApproverDepartmentId}
+                onValueChange={setFormLinkApproverDepartmentId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione aprovador departamento..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allWhatsappUsers.filter((user) => user.id !== formLinkUserId).map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name_user}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Aprovador Diretoria *</Label>
-              <Popover open={approverDirComboOpen} onOpenChange={setApproverDirComboOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={approverDirComboOpen}
-                    className="w-full justify-between"
-                  >
-                    {formLinkApproverDirectorId
-                      ? allWhatsappUsers.find((user) => user.id === formLinkApproverDirectorId)?.name_user || formLinkApproverDirectorId
-                      : "Selecione aprovador diretoria..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Buscar aprovador..." />
-                    <CommandList>
-                      <CommandEmpty>Nenhum aprovador encontrado.</CommandEmpty>
-                      <CommandGroup>
-                        {allWhatsappUsers.filter((user) => user.id !== formLinkUserId).map((user) => (
-                            <CommandItem
-                              key={user.id}
-                              value={`${user.name_user} ${user.phone_user}`}
-                              onSelect={() => {
-                                setFormLinkApproverDirectorId(user.id);
-                                setApproverDirComboOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={`mr-2 h-4 w-4 ${
-                                  formLinkApproverDirectorId === user.id ? "opacity-100" : "opacity-0"
-                                }`}
-                              />
-                              <div className="flex flex-col">
-                                <span className="font-medium">{user.name_user}</span>
-                                <span className="text-xs text-muted-foreground">{user.phone_user}</span>
-                              </div>
-                            </CommandItem>
-                          ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Select
+                value={formLinkApproverDirectorId}
+                onValueChange={setFormLinkApproverDirectorId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione aprovador diretoria..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allWhatsappUsers.filter((user) => user.id !== formLinkUserId).map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name_user}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

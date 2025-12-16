@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import AccountsPayablePage from "@/pages/AccountsPayablePage";
 import AccountsReceivablePage from "@/pages/AccountsReceivablePage";
 import Login from "@/pages/Login";
+import PaymentRequestsPage from "@/pages/PaymentRequestsPage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Appointments from "./components/Appointments";
@@ -47,6 +48,14 @@ const App = () => (
               element={
                 <Layout>
                   <Appointments />
+                </Layout>
+              }
+            />
+            <Route
+              path="/payment-requests"
+              element={
+                <Layout>
+                  <PaymentRequestsPage />
                 </Layout>
               }
             />

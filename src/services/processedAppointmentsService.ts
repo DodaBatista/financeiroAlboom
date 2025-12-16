@@ -1,7 +1,7 @@
 import { clearAuthTokens, getAuthTokens } from "../utils/api";
 import { getCompanyFromUrl } from "../utils/company";
 
-export const API_BASE_URL = 'https://fluxo.riapp.app/webhook/scheduling';
+export const API_BASE_URL = 'https://n8np7.risystems.online/webhook/scheduling';
 
 export const getProcessedAppointments = async (filters: any): Promise<any> => {
   try {

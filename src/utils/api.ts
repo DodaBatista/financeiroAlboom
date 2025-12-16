@@ -1,6 +1,6 @@
 import { getCompanyFromUrl } from './company';
 
-export const API_BASE_URL = 'https://fluxo.riapp.app/webhook/finance';
+export const API_BASE_URL = 'https://n8np7.risystems.online/webhook/finance';
 
 interface AuthTokens {
   token: string;
@@ -74,7 +74,7 @@ export const callAPI = async (
 export const callAPIN8N = async (endpoint: string, data: any = {}, uri: string = null): Promise<any> => {
   const empresa = getCompanyFromUrl();
 
-  const API_BASE_URL = 'https://fluxo.riapp.app/webhook';
+  const API_BASE_URL = 'https://n8np7.risystems.online/webhook';
 
   const formattedURL = uri ? API_BASE_URL + "/" + uri : API_BASE_URL;
 
@@ -105,7 +105,17 @@ export const callAPIN8N = async (endpoint: string, data: any = {}, uri: string =
         // throw new Error('Session expired. Please login again.');
       }
 
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Tenta capturar a resposta de erro do backend
+      try {
+        const errorData = await response.json();
+        const error: any = new Error(errorData.Message || errorData.message || `HTTP error! status: ${response.status}`);
+        error.data = errorData;
+        error.status = response.status;
+        throw error;
+      } catch (parseError) {
+        // Se não conseguir parsear o JSON, lança erro genérico
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
     }
 
     return await response.json();

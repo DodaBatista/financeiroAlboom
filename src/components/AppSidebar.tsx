@@ -28,6 +28,11 @@ const menuItems = [
     url: "/appointments",
     icon: Calendar,
   },
+  {
+    title: "Solicitações de Pagamento",
+    url: "/payment-requests",
+    icon: CreditCard,
+  },
 ];
 
 export function AppSidebar() {

@@ -2546,9 +2546,9 @@ const PaymentRequestsPage: React.FC = () => {
                         {allWhatsappUsers.map((user) => (
                             <CommandItem
                               key={user.id}
-                              value={`${user.name_user} ${user.phone_user}`}
-                              onSelect={() => {
-                                setFormLinkUserId(user.id);
+                              value={user.id}
+                              onSelect={(currentValue) => {
+                                setFormLinkUserId(currentValue);
                                 setUserComboOpen(false);
                               }}
                             >

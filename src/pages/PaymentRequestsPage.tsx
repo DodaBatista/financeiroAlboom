@@ -45,6 +45,9 @@ import {
 } from '@/services/approvalLinkService';
 import { Loader2, Search, Plus, Edit2, Trash2, Eye, MoreVertical, Send, FileText, Users, Link, Check, ChevronsUpDown } from 'lucide-react';
 import { callAPIN8N } from '@/utils/api';
+import { fetchContactsService } from '@/services/contactService';
+import { fetchAccountPlansService } from '@/services/accountService';
+import { useDebounce } from 'use-debounce';
 
 // Tipos removidos - agora importados do service
 
@@ -62,6 +65,8 @@ const PaymentRequestsPage: React.FC = () => {
   // Filters
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [dueDateStart, setDueDateStart] = useState('');
+  const [dueDateEnd, setDueDateEnd] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Pagination
@@ -81,6 +86,17 @@ const PaymentRequestsPage: React.FC = () => {
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
   const [sendToSystemModalOpen, setSendToSystemModalOpen] = useState(false);
   const [selectedRequestsForAction, setSelectedRequestsForAction] = useState<string[]>([]);
+  
+  // Estados para modal Enviar para Sistema
+  const [systemSupplier, setSystemSupplier] = useState('');
+  const [systemAccountPlan, setSystemAccountPlan] = useState('');
+  const [systemSuppliers, setSystemSuppliers] = useState<any[]>([]);
+  const [systemSupplierSearch, setSystemSupplierSearch] = useState('');
+  const [systemSupplierLoading, setSystemSupplierLoading] = useState(false);
+  const [debouncedSystemSupplierSearch] = useDebounce(systemSupplierSearch, 500);
+  const [systemAccountPlans, setSystemAccountPlans] = useState<any[]>([]);
+  const [systemAccountPlanSearch, setSystemAccountPlanSearch] = useState('');
+  const [systemAccountPlanLoading, setSystemAccountPlanLoading] = useState(false);
 
   const [activeRequest, setActiveRequest] = useState<PaymentRequestItem | null>(null);
 
@@ -284,8 +300,8 @@ const PaymentRequestsPage: React.FC = () => {
   const companyDbToDisplay = (dbValue: string): string => {
     const mapping: Record<string, string> = {
       'Taj_Noivas': 'TAJ - Noivas',
-      'Taj_Salão': 'TAJ - Salão',
-      'Produtora_7': 'Estudio Produtora 7'
+      'Produtora_7': 'Estudio Produtora 7',
+      'P7_Filmes': 'P7 Filmes'
     };
     return mapping[dbValue] || dbValue;
   };
@@ -293,8 +309,8 @@ const PaymentRequestsPage: React.FC = () => {
   const companyDisplayToDb = (displayValue: string): string => {
     const mapping: Record<string, string> = {
       'TAJ - Noivas': 'Taj_Noivas',
-      'TAJ - Salão': 'Taj_Salão',
-      'Estudio Produtora 7': 'Produtora_7'
+      'Estudio Produtora 7': 'Produtora_7',
+      'P7 Filmes': 'P7_Filmes'
     };
     return mapping[displayValue] || displayValue;
   };
@@ -333,6 +349,8 @@ const PaymentRequestsPage: React.FC = () => {
       const filters = {
         start_date: startDate,
         end_date: endDate,
+        due_date_start: dueDateStart,
+        due_date_end: dueDateEnd,
         department: selectedFilters.department,
         payment_company: selectedFilters.paymentCompany !== 'all' ? companyDisplayToDb(selectedFilters.paymentCompany) : selectedFilters.paymentCompany,
         payment_type: selectedFilters.paymentType,
@@ -412,14 +430,16 @@ const PaymentRequestsPage: React.FC = () => {
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     setStartDate(firstDay.toISOString().split('T')[0]);
     setEndDate(lastDay.toISOString().split('T')[0]);
+    setDueDateStart(firstDay.toISOString().split('T')[0]);
+    setDueDateEnd(lastDay.toISOString().split('T')[0]);
   }, []);
 
   // Carregar dados iniciais após definir as datas
   useEffect(() => {
-    if (startDate && endDate) {
+    if (startDate && endDate && dueDateStart && dueDateEnd) {
       loadRequests();
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, dueDateStart, dueDateEnd]);
 
   // Recarregar quando mudar página ou itens por página
   useEffect(() => {
@@ -432,6 +452,18 @@ const PaymentRequestsPage: React.FC = () => {
   useEffect(() => {
     applyFrontendFilters(allRequests);
   }, [searchTerm]);
+  
+  // Buscar fornecedores para modal Enviar para Sistema
+  useEffect(() => {
+    fetchSystemSuppliers(debouncedSystemSupplierSearch);
+  }, [debouncedSystemSupplierSearch]);
+  
+  // Carregar planos de contas quando modal for aberto
+  useEffect(() => {
+    if (sendToSystemModalOpen && systemAccountPlans.length === 0) {
+      fetchSystemAccountPlans();
+    }
+  }, [sendToSystemModalOpen]);
 
   // Carregar usuários WhatsApp quando a aba de requests for acessada (para usar no filtro)
   useEffect(() => {
@@ -799,19 +831,105 @@ const PaymentRequestsPage: React.FC = () => {
     setSelectedRequestsForAction(ids);
     setSendToSystemModalOpen(true);
   };
+  
+  const fetchSystemSuppliers = async (searchTerm?: string) => {
+    try {
+      setSystemSuppliers([]);
+      if (!searchTerm || searchTerm.length < 2) {
+        return;
+      }
+      setSystemSupplierLoading(true);
+      const result = await fetchContactsService(searchTerm, "3");
+      setSystemSuppliers(result);
+    } catch (error) {
+      toast({
+        title: 'Erro ao carregar fornecedores',
+        description: 'Não foi possível carregar a lista de fornecedores.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSystemSupplierLoading(false);
+    }
+  };
+  
+  const fetchSystemAccountPlans = async () => {
+    try {
+      setSystemAccountPlanLoading(true);
+      const result = await fetchAccountPlansService();
+      setSystemAccountPlans(result);
+    } catch (error) {
+      toast({
+        title: 'Erro ao carregar planos de contas',
+        description: 'Não foi possível carregar a lista de planos de contas.',
+        variant: 'destructive',
+      });
+      setSystemAccountPlans([]);
+    } finally {
+      setSystemAccountPlanLoading(false);
+    }
+  };
 
   const handleConfirmSendToSystem = async () => {
+    // Validar campos obrigatórios
+    if (!systemSupplier) {
+      toast({
+        title: 'Atenção',
+        description: 'Selecione um fornecedor',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!systemAccountPlan) {
+      toast({
+        title: 'Atenção',
+        description: 'Selecione um plano de contas',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      // TODO: Implementar chamada à API para enviar ao sistema com os dados do modal
-      // await sendPaymentRequestsToSystem(selectedRequestsForAction, formData);
+      // Buscar dados completos das solicitações selecionadas
+      const requestsToSend = allRequests.filter(r => 
+        selectedRequestsForAction.includes(r.id)
+      );
+
+      // Buscar dados completos do fornecedor selecionado
+      const customer = systemSuppliers.find(s => s.id === systemSupplier);
+
+      // Buscar dados completos do plano de contas selecionado
+      const account = systemAccountPlans.find(a => a.id === systemAccountPlan);
+
+      if (!customer || !account) {
+        throw new Error('Dados do fornecedor ou plano de contas não encontrados');
+      }
+
+      // Montar payload
+      const payload = {
+        data: requestsToSend,
+        customer: customer,
+        account: account,
+        user: user, // Dados do usuário logado
+      };
+
+      // Enviar para o backend
+      await callAPIN8N('payment_requests/sendalboom', payload, 'payment_requests/sendalboom');
+
       toast({
         title: 'Enviado',
         description: `${selectedRequestsForAction.length} solicitação(s) enviada(s) para o sistema`,
       });
+      
+      // Limpar estados e recarregar
       setSendToSystemModalOpen(false);
       setSelectedRequestsForAction([]);
       setSelectedIds(new Set());
+      setSystemSupplier('');
+      setSystemAccountPlan('');
+      setSystemSupplierSearch('');
+      setSystemAccountPlanSearch('');
       loadRequests();
     } catch (error) {
       toast({
@@ -868,14 +986,22 @@ const PaymentRequestsPage: React.FC = () => {
       
       if (response?.data?.[0]?.data) {
         const data = response.data[0].data;
-        setAllWhatsappUsers(data);
+        // Filtrar objetos vazios ou inválidos (sem id)
+        const validData = Array.isArray(data) 
+          ? data.filter(item => item && Object.keys(item).length > 0 && item.id) 
+          : [];
+        setAllWhatsappUsers(validData);
         
-        // Usa totalItems da paginação ou length dos dados
-        const totalItems = response.data[0].pagination?.totalItems || data.length;
+        // Usa totalItems da paginação ou length dos dados válidos
+        const totalItems = response.data[0].pagination?.totalItems || validData.length;
         setUserTotal(totalItems);
         
         // Aplicar filtro de busca no frontend
-        applyUserFrontendFilters(data);
+        applyUserFrontendFilters(validData);
+      } else {
+        setAllWhatsappUsers([]);
+        setWhatsappUsers([]);
+        setUserTotal(0);
       }
     } catch (error) {
       toast({
@@ -1089,14 +1215,22 @@ const PaymentRequestsPage: React.FC = () => {
       
       if (response?.data?.[0]?.data) {
         const data = response.data[0].data;
-        setAllApprovalLinks(data);
+        // Filtrar objetos vazios ou inválidos (sem id)
+        const validData = Array.isArray(data) 
+          ? data.filter(item => item && Object.keys(item).length > 0 && item.id) 
+          : [];
+        setAllApprovalLinks(validData);
         
-        // Usa totalItems da paginação ou length dos dados
-        const totalItems = response.data[0].pagination?.totalItems || data.length;
+        // Usa totalItems da paginação ou length dos dados válidos
+        const totalItems = response.data[0].pagination?.totalItems || validData.length;
         setLinkTotal(totalItems);
         
         // Aplicar filtro de busca no frontend
-        applyLinkFrontendFilters(data);
+        applyLinkFrontendFilters(validData);
+      } else {
+        setAllApprovalLinks([]);
+        setApprovalLinks([]);
+        setLinkTotal(0);
       }
     } catch (error) {
       toast({
@@ -1354,7 +1488,7 @@ const PaymentRequestsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* Linha 1: Datas + Busca textual (4 colunas, busca ocupa 2) */}
+              {/* Linha 1: Datas de Criação + Datas de Vencimento (4 colunas) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <Label>Data Inicial</Label>
@@ -1374,7 +1508,29 @@ const PaymentRequestsPage: React.FC = () => {
                     required
                   />
                 </div>
-                <div className="md:col-span-2">
+                <div>
+                  <Label>Venc. Inicial</Label>
+                  <Input
+                    type="date"
+                    value={dueDateStart}
+                    onChange={(e) => setDueDateStart(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Venc. Final</Label>
+                  <Input
+                    type="date"
+                    value={dueDateEnd}
+                    onChange={(e) => setDueDateEnd(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              
+              {/* Linha 2: Busca textual (ocupa 4 colunas) */}
+              <div className="grid grid-cols-1 gap-4">
+                <div>
                   <Label>Buscar por Solicitante/Email</Label>
                   <Input
                     placeholder="Digite para buscar..."
@@ -1384,7 +1540,7 @@ const PaymentRequestsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Linha 2: Usuários + Aprovações + Departamento (4 colunas) */}
+              {/* Linha 3: Usuários + Aprovações + Departamento (4 colunas) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <Label>Usuários</Label>
@@ -1462,7 +1618,7 @@ const PaymentRequestsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Linha 3: Empresa + Tipo de Pagamento + Tipo de Pessoa (4 colunas, última vazia) */}
+              {/* Linha 4: Empresa + Tipo de Pagamento + Tipo de Pessoa (4 colunas, última vazia) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <Label>Empresa</Label>
@@ -1476,8 +1632,8 @@ const PaymentRequestsPage: React.FC = () => {
                     <SelectContent>
                       <SelectItem value="all">Todas</SelectItem>
                       <SelectItem value="TAJ - Noivas">TAJ - Noivas</SelectItem>
-                      <SelectItem value="TAJ - Salão">TAJ - Salão</SelectItem>
                       <SelectItem value="Estudio Produtora 7">Estudio Produtora 7</SelectItem>
+                      <SelectItem value="P7 Filmes">P7 Filmes</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1523,13 +1679,6 @@ const PaymentRequestsPage: React.FC = () => {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    // Resetar datas para o mês atual
-                    const now = new Date();
-                    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-                    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                    setStartDate(firstDay.toISOString().split('T')[0]);
-                    setEndDate(lastDay.toISOString().split('T')[0]);
-                    
                     // Resetar filtros
                     setSelectedFilters({
                       department: 'all',
@@ -1541,6 +1690,15 @@ const PaymentRequestsPage: React.FC = () => {
                       userId: 'all'
                     });
                     setSearchTerm('');
+                    
+                    // Resetar datas para o mês corrente
+                    const now = new Date();
+                    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+                    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                    setStartDate(firstDay.toISOString().split('T')[0]);
+                    setEndDate(lastDay.toISOString().split('T')[0]);
+                    setDueDateStart(firstDay.toISOString().split('T')[0]);
+                    setDueDateEnd(lastDay.toISOString().split('T')[0]);
                     
                     // Resetar página para 1
                     setCurrentPage(1);
@@ -1613,7 +1771,7 @@ const PaymentRequestsPage: React.FC = () => {
                     <th className="p-4 text-left font-medium text-muted-foreground">Solicitante</th>
                     <th className="p-4 text-left font-medium text-muted-foreground">Depto</th>
                     <th className="p-4 text-left">Empresa</th>
-                    <th className="p-4 text-left">Cliente</th>
+                    <th className="p-4 text-left">Favorecido</th>
                     <th className="p-4 text-left">Pedido</th>
                     <th className="p-4 text-left">Tipo Pagto</th>
                     <th className="p-4 text-left">Forma Pagto</th>
@@ -1732,7 +1890,7 @@ const PaymentRequestsPage: React.FC = () => {
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="text-muted-foreground">Departamento</div>
                         <div className="text-right">{r.department}</div>
-                        <div className="text-muted-foreground">Cliente</div>
+                        <div className="text-muted-foreground">Favorecido</div>
                         <div className="text-right">{r.client_name}</div>
                         <div className="text-muted-foreground">Nº Pedido</div>
                         <div className="text-right">{r.contract_number}</div>
@@ -2625,16 +2783,116 @@ const PaymentRequestsPage: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Fornecedor */}
             <div className="space-y-2">
-              <label htmlFor="system-notes" className="text-sm font-medium">
-                Observações (opcional)
-              </label>
-              <Textarea
-                id="system-notes"
-                placeholder="Adicione observações sobre o envio..."
-                rows={4}
-                className="resize-none"
-              />
+              <Label>Fornecedor *</Label>
+              <Select
+                value={systemSupplier}
+                onValueChange={(value) => setSystemSupplier(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um fornecedor" />
+                </SelectTrigger>
+                <SelectContent
+                  className="z-50 max-h-[300px] overflow-y-auto bg-popover"
+                  position="popper"
+                  sideOffset={5}
+                >
+                  <div className="p-2 sticky top-0 bg-popover border-b z-10">
+                    <Input
+                      placeholder="Digite ao menos 2 caracteres..."
+                      value={systemSupplierSearch}
+                      onChange={(e) => setSystemSupplierSearch(e.target.value)}
+                      className="w-full"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                          e.preventDefault();
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+
+                  {systemSupplierLoading ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
+                  ) : systemSuppliers.length > 0 ? (
+                    systemSuppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))
+                  ) : systemSupplierSearch.length >= 2 ? (
+                    <div className="p-4 text-sm text-muted-foreground text-center">
+                      Nenhum fornecedor encontrado
+                    </div>
+                  ) : (
+                    <div className="p-4 text-sm text-muted-foreground text-center">
+                      Digite ao menos 2 caracteres para buscar
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Plano de Contas */}
+            <div className="space-y-2">
+              <Label>Plano de Contas *</Label>
+              <Select
+                value={systemAccountPlan}
+                onValueChange={(value) => setSystemAccountPlan(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um plano de contas" />
+                </SelectTrigger>
+                <SelectContent
+                  className="z-50 max-h-[300px] overflow-y-auto bg-popover"
+                  position="popper"
+                  sideOffset={5}
+                >
+                  <div className="p-2 sticky top-0 bg-popover border-b z-10">
+                    <Input
+                      placeholder="Buscar plano de contas..."
+                      value={systemAccountPlanSearch}
+                      onChange={(e) => setSystemAccountPlanSearch(e.target.value)}
+                      className="w-full"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                          e.preventDefault();
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+
+                  {systemAccountPlanLoading ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
+                  ) : systemAccountPlans.length > 0 ? (
+                    systemAccountPlans
+                      .filter((plan) => {
+                        if (!systemAccountPlanSearch) return true;
+                        const search = systemAccountPlanSearch.toLowerCase();
+                        return plan.id_name?.toLowerCase().includes(search);
+                      })
+                      .map((plan) => (
+                        <SelectItem key={plan.id} value={plan.id}>
+                          {plan.id_name}
+                        </SelectItem>
+                      ))
+                  ) : (
+                    <div className="p-4 text-sm text-muted-foreground text-center">
+                      Nenhum plano de contas encontrado
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

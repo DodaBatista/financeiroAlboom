@@ -839,7 +839,7 @@ const PaymentRequestsPage: React.FC = () => {
         return;
       }
       setSystemSupplierLoading(true);
-      const result = await fetchContactsService(searchTerm, "3");
+      const result = await fetchContactsService(searchTerm, "all");
       setSystemSuppliers(result);
     } catch (error) {
       toast({

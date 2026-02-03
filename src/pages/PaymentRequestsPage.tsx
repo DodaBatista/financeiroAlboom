@@ -2794,7 +2794,7 @@ const PaymentRequestsPage: React.FC = () => {
                   <SelectValue placeholder="Selecione um fornecedor" />
                 </SelectTrigger>
                 <SelectContent
-                  className="z-50 max-h-[300px] overflow-y-auto bg-popover"
+                  className="z-[100] max-h-[300px] overflow-y-auto bg-popover"
                   position="popper"
                   sideOffset={5}
                 >
@@ -2849,7 +2849,7 @@ const PaymentRequestsPage: React.FC = () => {
                   <SelectValue placeholder="Selecione um plano de contas" />
                 </SelectTrigger>
                 <SelectContent
-                  className="z-50 max-h-[300px] overflow-y-auto bg-popover"
+                  className="z-[100] max-h-[300px] overflow-y-auto bg-popover"
                   position="popper"
                   sideOffset={5}
                 >
@@ -2896,7 +2896,16 @@ const PaymentRequestsPage: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSendToSystemModalOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setSendToSystemModalOpen(false);
+                setSystemSupplier('');
+                setSystemAccountPlan('');
+                setSystemSupplierSearch('');
+                setSystemAccountPlanSearch('');
+              }}
+            >
               Cancelar
             </Button>
             <Button variant="default" onClick={handleConfirmSendToSystem}>

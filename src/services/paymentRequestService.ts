@@ -12,6 +12,7 @@ export interface PaymentRequestPayload {
   payment_type?: string;
   modality?: string;
   expense_value?: number;
+  installment?: number;
   due_date?: string; // ISO date
 
   // Dados Bancários

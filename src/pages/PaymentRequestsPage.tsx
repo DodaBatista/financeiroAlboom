@@ -3,21 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import PaymentRequestForm from '@/components/PaymentRequestForm';
@@ -43,7 +39,7 @@ import {
   fetchApprovalLinks,
   ApprovalLink,
 } from '@/services/approvalLinkService';
-import { Loader2, Search, Plus, Edit2, Trash2, Eye, MoreVertical, Send, FileText, Users, Link, Check, ChevronsUpDown } from 'lucide-react';
+import { Loader2, Search, Plus, Edit2, Trash2, Eye, MoreVertical, Send, FileText, Users, Link } from 'lucide-react';
 import { callAPIN8N } from '@/utils/api';
 import { fetchContactsService } from '@/services/contactService';
 import { fetchAccountPlansService } from '@/services/accountService';
@@ -109,6 +105,7 @@ const PaymentRequestsPage: React.FC = () => {
     approvedDepartment: string;
     approvedDirector: string;
     userId: string;
+    modality: string;
   }
 
   const [selectedFilters, setSelectedFilters] = useState<FilterState>({
@@ -118,7 +115,8 @@ const PaymentRequestsPage: React.FC = () => {
     personType: 'all',
     approvedDepartment: 'all',
     approvedDirector: 'all',
-    userId: 'all'
+    userId: 'all',
+    modality: 'all'
   });
 
   // Form state (reuse for create/edit)
@@ -132,9 +130,10 @@ const PaymentRequestsPage: React.FC = () => {
   const [formClientName, setFormClientName] = useState('');
   const [formContractNumber, setFormContractNumber] = useState('');
   const [formReason, setFormReason] = useState('');
-  const [formPaymentType, setFormPaymentType] = useState('Normal');
+  const [formPaymentType, setFormPaymentType] = useState('ComNF');
   const [formModality, setFormModality] = useState('Depósito');
   const [formExpenseValue, setFormExpenseValue] = useState('');
+  const [formInstallment, setFormInstallment] = useState('1');
   const [formDueDate, setFormDueDate] = useState('');
 
   // Dados Bancários
@@ -358,6 +357,7 @@ const PaymentRequestsPage: React.FC = () => {
         approved_department: selectedFilters.approvedDepartment,
         approved_director: selectedFilters.approvedDirector,
         id_user: selectedFilters.userId,
+        modality: selectedFilters.modality,
         page: currentPage,
         limit: itemsPerPage,
       };
@@ -495,9 +495,10 @@ const PaymentRequestsPage: React.FC = () => {
     setFormClientName('');
     setFormContractNumber('');
     setFormReason('');
-    setFormPaymentType('Normal');
+    setFormPaymentType('ComNF');
     setFormModality('Depósito');
     setFormExpenseValue('');
+    setFormInstallment('1');
     setFormDueDate('');
 
     setFormPersonType('fisica');
@@ -536,9 +537,10 @@ const PaymentRequestsPage: React.FC = () => {
     setFormClientName(request.client_name || '');
     setFormContractNumber(String(request.contract_number || ''));
     setFormReason(request.reason || '');
-    setFormPaymentType(request.payment_type || 'Normal');
+    setFormPaymentType(request.payment_type || 'ComNF');
     setFormModality(request.modality || 'Depósito');
     setFormExpenseValue(String(request.expense_value || (request as any).amount || ''));
+    setFormInstallment(String((request as any).installment || '1'));
     setFormDueDate(request.due_date || '');
 
     setFormPersonType(request.person_type || 'fisica');
@@ -566,9 +568,10 @@ const PaymentRequestsPage: React.FC = () => {
   setFormClientName(data.client_name || '');
   setFormContractNumber(String(data.contract_number || ''));
   setFormReason(data.reason || '');
-  setFormPaymentType(data.payment_type || 'Normal');
+  setFormPaymentType(data.payment_type || 'ComNF');
   setFormModality(data.modality || 'Depósito');
   setFormExpenseValue(String(data.expense_value || data.amount || ''));
+  setFormInstallment(String((data as any).installment || '1'));
   setFormDueDate(data.due_date || '');
 
   setFormPersonType(data.person_type || 'fisica');
@@ -621,6 +624,9 @@ const PaymentRequestsPage: React.FC = () => {
       case 'expense_value':
         setFormExpenseValue(value);
         break;
+      case 'installment':
+        setFormInstallment(value);
+        break;
       case 'due_date':
         setFormDueDate(value);
         break;
@@ -665,6 +671,7 @@ const PaymentRequestsPage: React.FC = () => {
         payment_type: formPaymentType,
         modality: formModality,
         expense_value: Number(formExpenseValue.replace(/\D/g, '')) / 100,
+        installment: Number(formInstallment) || 1,
         due_date: formDueDate,
 
         person_type: formPersonType,
@@ -710,6 +717,7 @@ const PaymentRequestsPage: React.FC = () => {
         payment_type: formPaymentType,
         modality: formModality,
         expense_value: Number(formExpenseValue.replace(/\D/g, '')) / 100,
+        installment: Number(formInstallment) || 1,
         due_date: formDueDate,
 
         person_type: formPersonType,
@@ -1648,8 +1656,8 @@ const PaymentRequestsPage: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="Normal">Normal</SelectItem>
-                      <SelectItem value="Especial">Especial</SelectItem>
+                      <SelectItem value="ComNF">ComNF</SelectItem>
+                      <SelectItem value="SemNF">SemNF</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1670,7 +1678,23 @@ const PaymentRequestsPage: React.FC = () => {
                   </Select>
                 </div>
                 <div>
-                  {/* Espaço reservado para futuro filtro */}
+                  <Label>Modalidade</Label>
+                  <Select 
+                    value={selectedFilters.modality || 'all'} 
+                    onValueChange={(value) => setSelectedFilters(prev => ({ ...prev, modality: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      <SelectItem value="Depósito">Depósito</SelectItem>
+                      <SelectItem value="Boleto">Boleto</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                      <SelectItem value="Pix">Pix</SelectItem>
+                      <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -1687,7 +1711,8 @@ const PaymentRequestsPage: React.FC = () => {
                       personType: 'all',
                       approvedDepartment: 'all',
                       approvedDirector: 'all',
-                      userId: 'all'
+                      userId: 'all',
+                      modality: 'all'
                     });
                     setSearchTerm('');
                     
@@ -2440,6 +2465,7 @@ const PaymentRequestsPage: React.FC = () => {
                 paymentType: formPaymentType,
                 modality: formModality,
                 expenseValue: formExpenseValue,
+                installment: formInstallment,
                 dueDate: formDueDate,
                 personType: formPersonType,
                 titular: formTitular,
@@ -2491,6 +2517,7 @@ const PaymentRequestsPage: React.FC = () => {
                 paymentType: formPaymentType,
                 modality: formModality,
                 expenseValue: formExpenseValue,
+                installment: formInstallment,
                 dueDate: formDueDate,
                 personType: formPersonType,
                 titular: formTitular,
@@ -2556,6 +2583,7 @@ const PaymentRequestsPage: React.FC = () => {
                 paymentType: formPaymentType,
                 modality: formModality,
                 expenseValue: formExpenseValue,
+                installment: formInstallment,
                 dueDate: formDueDate,
                 personType: formPersonType,
                 titular: formTitular,

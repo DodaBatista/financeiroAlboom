@@ -20,6 +20,7 @@ interface PaymentRequestFormProps {
     paymentType: string;
     modality: string;
     expenseValue: string;
+    installment: string;
     dueDate: string;
     personType: 'fisica' | 'juridica';
     titular: string;
@@ -112,8 +113,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Normal">Normal</SelectItem>
-              <SelectItem value="Especial">Especial</SelectItem>
+              <SelectItem value="ComNF">ComNF</SelectItem>
+              <SelectItem value="SemNF">SemNF</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -129,6 +130,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               <SelectItem value="Boleto">Boleto</SelectItem>
               <SelectItem value="Cheque">Cheque</SelectItem>
               <SelectItem value="Pix">Pix</SelectItem>
+              <SelectItem value="Dinheiro">Dinheiro</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -142,6 +144,18 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               onChange('expense_value', formatCurrency(onlyNumbers));
             }}
             placeholder="0,00"
+            disabled={disabled}
+          />
+        </div>
+
+        <div>
+          <Label>Parcelas</Label>
+          <Input
+            type="number"
+            value={data.installment}
+            onChange={(e) => onChange('installment', e.target.value)}
+            placeholder="1"
+            min="1"
             disabled={disabled}
           />
         </div>

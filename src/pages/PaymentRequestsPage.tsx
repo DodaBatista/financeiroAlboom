@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
@@ -42,6 +43,7 @@ import {
 import { Loader2, Search, Plus, Edit2, Trash2, Eye, MoreVertical, Send, FileText, Users, Link } from 'lucide-react';
 import { callAPIN8N } from '@/utils/api';
 import { fetchContactsService } from '@/services/contactService';
+import { fetchFreelancersService } from '@/services/freelancerService';
 import { fetchAccountPlansService } from '@/services/accountService';
 import { useDebounce } from 'use-debounce';
 
@@ -84,12 +86,18 @@ const PaymentRequestsPage: React.FC = () => {
   const [selectedRequestsForAction, setSelectedRequestsForAction] = useState<string[]>([]);
   
   // Estados para modal Enviar para Sistema
+  const [systemFilterType, setSystemFilterType] = useState<'supplier' | 'freelancer'>('supplier');
   const [systemSupplier, setSystemSupplier] = useState('');
+  const [systemFreelancer, setSystemFreelancer] = useState('');
   const [systemAccountPlan, setSystemAccountPlan] = useState('');
   const [systemSuppliers, setSystemSuppliers] = useState<any[]>([]);
+  const [systemFreelancers, setSystemFreelancers] = useState<any[]>([]);
   const [systemSupplierSearch, setSystemSupplierSearch] = useState('');
+  const [systemFreelancerSearch, setSystemFreelancerSearch] = useState('');
   const [systemSupplierLoading, setSystemSupplierLoading] = useState(false);
+  const [systemFreelancerLoading, setSystemFreelancerLoading] = useState(false);
   const [debouncedSystemSupplierSearch] = useDebounce(systemSupplierSearch, 500);
+  const [debouncedSystemFreelancerSearch] = useDebounce(systemFreelancerSearch, 500);
   const [systemAccountPlans, setSystemAccountPlans] = useState<any[]>([]);
   const [systemAccountPlanSearch, setSystemAccountPlanSearch] = useState('');
   const [systemAccountPlanLoading, setSystemAccountPlanLoading] = useState(false);
@@ -458,12 +466,27 @@ const PaymentRequestsPage: React.FC = () => {
     fetchSystemSuppliers(debouncedSystemSupplierSearch);
   }, [debouncedSystemSupplierSearch]);
   
+  // Buscar freelancers para modal Enviar para Sistema
+  useEffect(() => {
+    fetchSystemFreelancers(debouncedSystemFreelancerSearch);
+  }, [debouncedSystemFreelancerSearch]);
+  
   // Carregar planos de contas quando modal for aberto
   useEffect(() => {
     if (sendToSystemModalOpen && systemAccountPlans.length === 0) {
       fetchSystemAccountPlans();
     }
   }, [sendToSystemModalOpen]);
+  
+  // Limpar seleções ao trocar o tipo de filtro no modal
+  useEffect(() => {
+    setSystemSupplier('');
+    setSystemFreelancer('');
+    setSystemSupplierSearch('');
+    setSystemFreelancerSearch('');
+    setSystemSuppliers([]);
+    setSystemFreelancers([]);
+  }, [systemFilterType]);
 
   // Carregar usuários WhatsApp quando a aba de requests for acessada (para usar no filtro)
   useEffect(() => {
@@ -860,6 +883,26 @@ const PaymentRequestsPage: React.FC = () => {
     }
   };
   
+  const fetchSystemFreelancers = async (searchTerm?: string) => {
+    try {
+      setSystemFreelancers([]);
+      if (!searchTerm || searchTerm.length < 2) {
+        return;
+      }
+      setSystemFreelancerLoading(true);
+      const result = await fetchFreelancersService(searchTerm);
+      setSystemFreelancers(result);
+    } catch (error) {
+      toast({
+        title: 'Erro ao carregar freelancers',
+        description: 'Não foi possível carregar a lista de freelancers.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSystemFreelancerLoading(false);
+    }
+  };
+  
   const fetchSystemAccountPlans = async () => {
     try {
       setSystemAccountPlanLoading(true);
@@ -879,10 +922,12 @@ const PaymentRequestsPage: React.FC = () => {
 
   const handleConfirmSendToSystem = async () => {
     // Validar campos obrigatórios
-    if (!systemSupplier) {
+    const selectedEntity = systemFilterType === 'supplier' ? systemSupplier : systemFreelancer;
+    
+    if (!selectedEntity) {
       toast({
         title: 'Atenção',
-        description: 'Selecione um fornecedor',
+        description: `Selecione um ${systemFilterType === 'supplier' ? 'fornecedor' : 'freelancer'}`,
         variant: 'destructive',
       });
       return;
@@ -904,14 +949,16 @@ const PaymentRequestsPage: React.FC = () => {
         selectedRequestsForAction.includes(r.id)
       );
 
-      // Buscar dados completos do fornecedor selecionado
-      const customer = systemSuppliers.find(s => s.id === systemSupplier);
+      // Buscar dados completos do fornecedor ou freelancer selecionado
+      const customer = systemFilterType === 'supplier'
+        ? systemSuppliers.find(s => s.id === systemSupplier)
+        : systemFreelancers.find(f => f.id === systemFreelancer);
 
       // Buscar dados completos do plano de contas selecionado
       const account = systemAccountPlans.find(a => a.id === systemAccountPlan);
 
       if (!customer || !account) {
-        throw new Error('Dados do fornecedor ou plano de contas não encontrados');
+        throw new Error('Dados do fornecedor/freelancer ou plano de contas não encontrados');
       }
 
       // Montar payload
@@ -934,9 +981,12 @@ const PaymentRequestsPage: React.FC = () => {
       setSendToSystemModalOpen(false);
       setSelectedRequestsForAction([]);
       setSelectedIds(new Set());
+      setSystemFilterType('supplier');
       setSystemSupplier('');
+      setSystemFreelancer('');
       setSystemAccountPlan('');
       setSystemSupplierSearch('');
+      setSystemFreelancerSearch('');
       setSystemAccountPlanSearch('');
       loadRequests();
     } catch (error) {
@@ -2811,7 +2861,31 @@ const PaymentRequestsPage: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Tipo de Entidade */}
+            <div className="space-y-2">
+              <Label>Tipo de Entidade *</Label>
+              <RadioGroup
+                value={systemFilterType}
+                onValueChange={(value: 'supplier' | 'freelancer') => setSystemFilterType(value)}
+                className="flex flex-row gap-6 mt-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="supplier" id="system-supplier" />
+                  <Label htmlFor="system-supplier" className="text-sm cursor-pointer">
+                    Fornecedor
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="freelancer" id="system-freelancer" />
+                  <Label htmlFor="system-freelancer" className="text-sm cursor-pointer">
+                    Freelancer
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
             {/* Fornecedor */}
+            {systemFilterType === 'supplier' && (
             <div className="space-y-2">
               <Label>Fornecedor *</Label>
               <Select
@@ -2865,6 +2939,64 @@ const PaymentRequestsPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            )}
+
+            {/* Freelancer */}
+            {systemFilterType === 'freelancer' && (
+            <div className="space-y-2">
+              <Label>Freelancer *</Label>
+              <Select
+                value={systemFreelancer}
+                onValueChange={(value) => setSystemFreelancer(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um freelancer" />
+                </SelectTrigger>
+                <SelectContent
+                  className="z-[100] max-h-[300px] overflow-y-auto bg-popover"
+                  position="popper"
+                  sideOffset={5}
+                >
+                  <div className="p-2 sticky top-0 bg-popover border-b z-10">
+                    <Input
+                      placeholder="Digite ao menos 2 caracteres..."
+                      value={systemFreelancerSearch}
+                      onChange={(e) => setSystemFreelancerSearch(e.target.value)}
+                      className="w-full"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                          e.preventDefault();
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+
+                  {systemFreelancerLoading ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
+                  ) : systemFreelancers.length > 0 ? (
+                    systemFreelancers.map((freelancer) => (
+                      <SelectItem key={freelancer.id} value={freelancer.id}>
+                        {freelancer.name} {freelancer.lastname}
+                      </SelectItem>
+                    ))
+                  ) : systemFreelancerSearch.length >= 2 ? (
+                    <div className="p-4 text-sm text-muted-foreground text-center">
+                      Nenhum freelancer encontrado
+                    </div>
+                  ) : (
+                    <div className="p-4 text-sm text-muted-foreground text-center">
+                      Digite ao menos 2 caracteres para buscar
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            )}
 
             {/* Plano de Contas */}
             <div className="space-y-2">
@@ -2928,9 +3060,12 @@ const PaymentRequestsPage: React.FC = () => {
               variant="outline" 
               onClick={() => {
                 setSendToSystemModalOpen(false);
+                setSystemFilterType('supplier');
                 setSystemSupplier('');
+                setSystemFreelancer('');
                 setSystemAccountPlan('');
                 setSystemSupplierSearch('');
+                setSystemFreelancerSearch('');
                 setSystemAccountPlanSearch('');
               }}
             >

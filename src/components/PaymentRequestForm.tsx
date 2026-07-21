@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PaymentRequestPayload } from '@/services/paymentRequestService';
 import { SearchableBankSelect } from '@/components/SearchableBankSelect';
 import { useBanks } from '@/hooks/use-banks';
+import { PAYMENT_COMPANIES } from '@/config/paymentCompanies';
 
 interface PaymentRequestFormProps {
   data: {
@@ -82,9 +83,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="TAJ - Noivas">TAJ - Noivas</SelectItem>
-              <SelectItem value="TAJ - Salão">TAJ - Salão</SelectItem>
-              <SelectItem value="Estudio Produtora 7">Estudio Produtora 7</SelectItem>
+              {PAYMENT_COMPANIES.map((company) => (
+                <SelectItem key={company.dbValue} value={company.label}>
+                  {company.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

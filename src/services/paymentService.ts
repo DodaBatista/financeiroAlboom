@@ -1,4 +1,4 @@
-import { callAPI } from "../utils/api";
+import { callAPISmart } from "../utils/api";
 
 export type PaymentType = {
   id: string;
@@ -8,7 +8,7 @@ export type PaymentType = {
 
 export const paymentService = {
   async fetchPaymentTypes(): Promise<PaymentType[]> {
-    const response = await callAPI("categories/payments", null, "GET");
+    const response = await callAPISmart("categories/payments", null, "GET");
     return (response || []).map((item: any) => ({
       id: item.id,
       name: item.name,

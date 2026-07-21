@@ -6,6 +6,7 @@ export interface WhatsAppUser {
   phone_user: string;
   email_user: string;
   status: boolean;
+  companies: string[];
   created_at?: string;
   updated_at?: string;
 }
@@ -16,6 +17,7 @@ export interface WhatsAppUserPayload {
   phone_user: string;
   email_user: string;
   status: boolean;
+  companies: string[];
 }
 
 export const createWhatsAppUser = async (data: Omit<WhatsAppUserPayload, 'id'>) => {

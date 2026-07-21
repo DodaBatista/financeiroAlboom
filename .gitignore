@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Docs de trabalho (podem conter dados sensíveis de análise, ex: extratos, CPFs)
+docs
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

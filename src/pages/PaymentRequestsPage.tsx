@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,12 +46,15 @@ import { fetchContactsService } from '@/services/contactService';
 import { fetchFreelancersService } from '@/services/freelancerService';
 import { fetchAccountPlansService } from '@/services/accountService';
 import { useDebounce } from 'use-debounce';
+import { PAYMENT_COMPANIES, paymentCompanyDbToLabel, paymentCompanyLabelToDb } from '@/config/paymentCompanies';
+import { useCompanies } from '@/hooks/use-companies';
 
 // Tipos removidos - agora importados do service
 
 const PaymentRequestsPage: React.FC = () => {
   const { toast } = useToast();
-  
+  const { companies: knownCompanies, getDisplayName: getEmpresaDisplayName } = useCompanies();
+
   // Estado da aba ativa
   const [activeTab, setActiveTab] = useState('requests');
   
@@ -128,7 +131,7 @@ const PaymentRequestsPage: React.FC = () => {
   });
 
   // Form state (reuse for create/edit)
-  const { user } = useAuth();
+  const { user, activeEmpresa } = useAuth();
 
   // Dados Gerais
   const [formRequester, setFormRequester] = useState('');
@@ -176,6 +179,7 @@ const PaymentRequestsPage: React.FC = () => {
   const [formUserPhone, setFormUserPhone] = useState('');
   const [formUserEmail, setFormUserEmail] = useState('');
   const [formUserStatus, setFormUserStatus] = useState(true);
+  const [formUserCompanies, setFormUserCompanies] = useState<string[]>([]);
   const [userFormLoading, setUserFormLoading] = useState(false);
 
   // ===== Estados para Vínculos de Aprovação =====
@@ -196,6 +200,7 @@ const PaymentRequestsPage: React.FC = () => {
 
   // Form de vínculo
   const [formLinkUserId, setFormLinkUserId] = useState('');
+  const [formLinkEmpresa, setFormLinkEmpresa] = useState('');
   const [formLinkApproverDepartmentId, setFormLinkApproverDepartmentId] = useState('');
   const [formLinkApproverDirectorId, setFormLinkApproverDirectorId] = useState('');
   const [linkFormLoading, setLinkFormLoading] = useState(false);
@@ -303,24 +308,9 @@ const PaymentRequestsPage: React.FC = () => {
     return d.toLocaleString('pt-BR');
   };
 
-  // Conversão de empresa de pagamento
-  const companyDbToDisplay = (dbValue: string): string => {
-    const mapping: Record<string, string> = {
-      'Taj_Noivas': 'TAJ - Noivas',
-      'Produtora_7': 'Estudio Produtora 7',
-      'P7_Filmes': 'P7 Filmes'
-    };
-    return mapping[dbValue] || dbValue;
-  };
-
-  const companyDisplayToDb = (displayValue: string): string => {
-    const mapping: Record<string, string> = {
-      'TAJ - Noivas': 'Taj_Noivas',
-      'Estudio Produtora 7': 'Produtora_7',
-      'P7 Filmes': 'P7_Filmes'
-    };
-    return mapping[displayValue] || displayValue;
-  };
+  // Conversão de empresa de pagamento (fonte única em src/config/paymentCompanies.ts)
+  const companyDbToDisplay = paymentCompanyDbToLabel;
+  const companyDisplayToDb = paymentCompanyLabelToDb;
 
   // Map approval values from API to label and badge variant
   type BadgeVariant = 'success' | 'destructive' | 'secondary' | 'default' | 'outline';
@@ -494,6 +484,24 @@ const PaymentRequestsPage: React.FC = () => {
       loadWhatsAppUsers('true'); // Carregar apenas usuários ativos
     }
   }, [activeTab]);
+
+  // Ao trocar de empresa: limpa e recarrega só a aba de Solicitações. As abas de Usuários e
+  // Vínculos de Aprovação são intencionalmente cross-empresa (cadastro de quais empresas cada
+  // usuário/vínculo pode atender), então não devem reagir à troca de empresa ativa.
+  const isFirstEmpresaRender = useRef(true);
+  useEffect(() => {
+    if (isFirstEmpresaRender.current) {
+      isFirstEmpresaRender.current = false;
+      return;
+    }
+    setAllRequests([]);
+    setRequests([]);
+    setSelectedIds(new Set());
+    setCurrentPage(1);
+    if (startDate && endDate) {
+      loadRequests();
+    }
+  }, [activeEmpresa]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -1121,6 +1129,7 @@ const PaymentRequestsPage: React.FC = () => {
         phone_user: cleanPhoneNumber(formUserPhone),
         email_user: formUserEmail.trim(),
         status: formUserStatus,
+        companies: formUserCompanies,
       };
 
       await createWhatsAppUser(payload);
@@ -1180,6 +1189,7 @@ const PaymentRequestsPage: React.FC = () => {
         phone_user: cleanPhoneNumber(formUserPhone),
         email_user: formUserEmail.trim(),
         status: formUserStatus,
+        companies: formUserCompanies,
       };
 
       await updateWhatsAppUser(payload);
@@ -1226,6 +1236,7 @@ const PaymentRequestsPage: React.FC = () => {
     setFormUserPhone(formatPhoneNumber(phoneWithoutCountryCode));
     setFormUserEmail(user.email_user);
     setFormUserStatus(user.status);
+    setFormUserCompanies(user.companies || []);
     setUserEditMode(true);
     setUserModalOpen(true);
   };
@@ -1235,7 +1246,14 @@ const PaymentRequestsPage: React.FC = () => {
     setFormUserPhone('');
     setFormUserEmail('');
     setFormUserStatus(true);
+    setFormUserCompanies([]);
     setActiveUser(null);
+  };
+
+  const toggleUserCompany = (empresa: string) => {
+    setFormUserCompanies((prev) =>
+      prev.includes(empresa) ? prev.filter((c) => c !== empresa) : [...prev, empresa]
+    );
   };
 
   // Carregar usuários quando a aba mudar
@@ -1329,6 +1347,10 @@ const PaymentRequestsPage: React.FC = () => {
       toast({ title: 'Erro', description: 'Selecione um usuário', variant: 'destructive' });
       return;
     }
+    if (!formLinkEmpresa) {
+      toast({ title: 'Erro', description: 'Selecione a empresa', variant: 'destructive' });
+      return;
+    }
     if (!formLinkApproverDepartmentId) {
       toast({ title: 'Erro', description: 'Selecione um aprovador de departamento', variant: 'destructive' });
       return;
@@ -1340,18 +1362,18 @@ const PaymentRequestsPage: React.FC = () => {
 
     // Validação: Usuário não pode ser igual aos aprovadores
     if (formLinkUserId === formLinkApproverDepartmentId) {
-      toast({ 
-        title: 'Erro', 
-        description: 'O usuário não pode ser o mesmo que o aprovador de departamento', 
-        variant: 'destructive' 
+      toast({
+        title: 'Erro',
+        description: 'O usuário não pode ser o mesmo que o aprovador de departamento',
+        variant: 'destructive'
       });
       return;
     }
     if (formLinkUserId === formLinkApproverDirectorId) {
-      toast({ 
-        title: 'Erro', 
-        description: 'O usuário não pode ser o mesmo que o aprovador de diretoria', 
-        variant: 'destructive' 
+      toast({
+        title: 'Erro',
+        description: 'O usuário não pode ser o mesmo que o aprovador de diretoria',
+        variant: 'destructive'
       });
       return;
     }
@@ -1360,6 +1382,7 @@ const PaymentRequestsPage: React.FC = () => {
     try {
       const payload = {
         user_id: formLinkUserId,
+        empresa: formLinkEmpresa,
         approver_department_id: formLinkApproverDepartmentId,
         approver_director_id: formLinkApproverDirectorId,
       };
@@ -1398,6 +1421,10 @@ const PaymentRequestsPage: React.FC = () => {
       toast({ title: 'Erro', description: 'Selecione um usuário', variant: 'destructive' });
       return;
     }
+    if (!formLinkEmpresa) {
+      toast({ title: 'Erro', description: 'Selecione a empresa', variant: 'destructive' });
+      return;
+    }
     if (!formLinkApproverDepartmentId) {
       toast({ title: 'Erro', description: 'Selecione um aprovador de departamento', variant: 'destructive' });
       return;
@@ -1409,18 +1436,18 @@ const PaymentRequestsPage: React.FC = () => {
 
     // Validação: Usuário não pode ser igual aos aprovadores
     if (formLinkUserId === formLinkApproverDepartmentId) {
-      toast({ 
-        title: 'Erro', 
-        description: 'O usuário não pode ser o mesmo que o aprovador de departamento', 
-        variant: 'destructive' 
+      toast({
+        title: 'Erro',
+        description: 'O usuário não pode ser o mesmo que o aprovador de departamento',
+        variant: 'destructive'
       });
       return;
     }
     if (formLinkUserId === formLinkApproverDirectorId) {
-      toast({ 
-        title: 'Erro', 
-        description: 'O usuário não pode ser o mesmo que o aprovador de diretoria', 
-        variant: 'destructive' 
+      toast({
+        title: 'Erro',
+        description: 'O usuário não pode ser o mesmo que o aprovador de diretoria',
+        variant: 'destructive'
       });
       return;
     }
@@ -1430,6 +1457,7 @@ const PaymentRequestsPage: React.FC = () => {
       const payload = {
         id: activeLink.id,
         user_id: formLinkUserId,
+        empresa: formLinkEmpresa,
         approver_department_id: formLinkApproverDepartmentId,
         approver_director_id: formLinkApproverDirectorId,
       };
@@ -1483,11 +1511,12 @@ const PaymentRequestsPage: React.FC = () => {
   const openLinkEditModal = async (link: ApprovalLink) => {
     setActiveLink(link);
     setFormLinkUserId(link.user_id);
+    setFormLinkEmpresa(link.empresa || '');
     setFormLinkApproverDepartmentId(link.approver_department_id);
     setFormLinkApproverDirectorId(link.approver_director_id);
     setLinkEditMode(true);
     setLinkModalOpen(true);
-    
+
     // Carregar usuários ativos para os comboboxes
     await loadUsersForCombobox();
   };
@@ -1499,6 +1528,7 @@ const PaymentRequestsPage: React.FC = () => {
 
   const resetLinkForm = () => {
     setFormLinkUserId('');
+    setFormLinkEmpresa('');
     setFormLinkApproverDepartmentId('');
     setFormLinkApproverDirectorId('');
     setActiveLink(null);
@@ -1689,9 +1719,11 @@ const PaymentRequestsPage: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas</SelectItem>
-                      <SelectItem value="TAJ - Noivas">TAJ - Noivas</SelectItem>
-                      <SelectItem value="Estudio Produtora 7">Estudio Produtora 7</SelectItem>
-                      <SelectItem value="P7 Filmes">P7 Filmes</SelectItem>
+                      {PAYMENT_COMPANIES.map((company) => (
+                        <SelectItem key={company.dbValue} value={company.label}>
+                          {company.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -2184,6 +2216,7 @@ const PaymentRequestsPage: React.FC = () => {
                             <th className="p-4 text-left font-semibold">Email</th>
                             <th className="p-4 text-left font-semibold">Telefone</th>
                             <th className="p-4 text-left font-semibold">Status</th>
+                            <th className="p-4 text-left font-semibold">Empresas</th>
                             <th className="p-4 text-left font-semibold">Ações</th>
                           </tr>
                         </thead>
@@ -2197,6 +2230,13 @@ const PaymentRequestsPage: React.FC = () => {
                                 <Badge variant={user.status ? 'success' : 'secondary'}>
                                   {user.status ? 'Ativo' : 'Inativo'}
                                 </Badge>
+                              </td>
+                              <td className="p-4 space-x-1">
+                                {(user.companies || []).map((empresa) => (
+                                  <Badge key={empresa} variant="outline">
+                                    {getEmpresaDisplayName(empresa)}
+                                  </Badge>
+                                ))}
                               </td>
                               <td className="p-4">
                                 <Button size="sm" variant="ghost" onClick={() => openUserEditModal(user)}>
@@ -2220,6 +2260,13 @@ const PaymentRequestsPage: React.FC = () => {
                                   <div className="font-semibold">{user.name_user}</div>
                                   <div className="text-sm text-muted-foreground">{user.email_user}</div>
                                   <div className="text-sm text-muted-foreground">{user.phone_user}</div>
+                                  <div className="mt-1 space-x-1">
+                                    {(user.companies || []).map((empresa) => (
+                                      <Badge key={empresa} variant="outline">
+                                        {getEmpresaDisplayName(empresa)}
+                                      </Badge>
+                                    ))}
+                                  </div>
                                 </div>
                                 <Badge variant={user.status ? 'success' : 'secondary'}>
                                   {user.status ? 'Ativo' : 'Inativo'}
@@ -2376,6 +2423,7 @@ const PaymentRequestsPage: React.FC = () => {
                         <thead className="bg-muted/50">
                           <tr>
                             <th className="p-4 text-left font-semibold">Usuário</th>
+                            <th className="p-4 text-left font-semibold">Empresa</th>
                             <th className="p-4 text-left font-semibold">Aprov. Departamento</th>
                             <th className="p-4 text-left font-semibold">Aprov. Diretoria</th>
                             <th className="p-4 text-left font-semibold">Ações</th>
@@ -2385,6 +2433,7 @@ const PaymentRequestsPage: React.FC = () => {
                           {approvalLinks.map((link) => (
                             <tr key={link.id} className="border-b border-border hover:bg-muted/30">
                               <td className="p-4">{link.user_name || link.user_id}</td>
+                              <td className="p-4">{getEmpresaDisplayName(link.empresa)}</td>
                               <td className="p-4">{link.approver_department_name || link.approver_department_id}</td>
                               <td className="p-4">{link.approver_director_name || link.approver_director_id}</td>
                               <td className="p-4 flex gap-2">
@@ -2410,6 +2459,7 @@ const PaymentRequestsPage: React.FC = () => {
                               <div>
                                 <div className="font-semibold">{link.user_name || link.user_id}</div>
                                 <div className="text-sm text-muted-foreground mt-1">
+                                  <div>Empresa: {getEmpresaDisplayName(link.empresa)}</div>
                                   <div>Depto: {link.approver_department_name || link.approver_department_id}</div>
                                   <div>Diretoria: {link.approver_director_name || link.approver_director_id}</div>
                                 </div>
@@ -2738,6 +2788,21 @@ const PaymentRequestsPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Empresas liberadas</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {knownCompanies.map(({ empresa, displayName }) => (
+                  <div key={empresa} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`whatsapp-user-company-${empresa}`}
+                      checked={formUserCompanies.includes(empresa)}
+                      onCheckedChange={() => toggleUserCompany(empresa)}
+                    />
+                    <Label htmlFor={`whatsapp-user-company-${empresa}`}>{displayName}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUserModalOpen(false)} disabled={userFormLoading}>
@@ -2781,20 +2846,46 @@ const PaymentRequestsPage: React.FC = () => {
               </Select>
             </div>
             <div>
+              <Label>Empresa *</Label>
+              <Select
+                value={formLinkEmpresa}
+                onValueChange={(value) => {
+                  setFormLinkEmpresa(value);
+                  // Aprovadores selecionados podem não pertencer à nova empresa
+                  setFormLinkApproverDepartmentId('');
+                  setFormLinkApproverDirectorId('');
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a empresa..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {knownCompanies.map(({ empresa, displayName }) => (
+                    <SelectItem key={empresa} value={empresa}>
+                      {displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Aprovador Departamento *</Label>
               <Select
                 value={formLinkApproverDepartmentId}
                 onValueChange={setFormLinkApproverDepartmentId}
+                disabled={!formLinkEmpresa}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione aprovador departamento..." />
+                  <SelectValue placeholder={formLinkEmpresa ? 'Selecione aprovador departamento...' : 'Selecione a empresa primeiro'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {allWhatsappUsers.filter((user) => user.id !== formLinkUserId).map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name_user}
-                    </SelectItem>
-                  ))}
+                  {allWhatsappUsers
+                    .filter((user) => user.id !== formLinkUserId && (user.companies || []).includes(formLinkEmpresa))
+                    .map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name_user}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -2803,16 +2894,19 @@ const PaymentRequestsPage: React.FC = () => {
               <Select
                 value={formLinkApproverDirectorId}
                 onValueChange={setFormLinkApproverDirectorId}
+                disabled={!formLinkEmpresa}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione aprovador diretoria..." />
+                  <SelectValue placeholder={formLinkEmpresa ? 'Selecione aprovador diretoria...' : 'Selecione a empresa primeiro'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {allWhatsappUsers.filter((user) => user.id !== formLinkUserId).map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name_user}
-                    </SelectItem>
-                  ))}
+                  {allWhatsappUsers
+                    .filter((user) => user.id !== formLinkUserId && (user.companies || []).includes(formLinkEmpresa))
+                    .map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name_user}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

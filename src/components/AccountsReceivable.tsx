@@ -44,6 +44,8 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useDebounce } from "use-debounce";
 
+import { OfxReconciliation } from "@/components/OfxReconciliation";
+import { useAuth } from "@/contexts/AuthContext";
 import { bankService } from "@/services/bankService";
 import { fetchContactsService } from "@/services/contactService";
 import { paymentService } from "@/services/paymentService";
@@ -100,6 +102,7 @@ interface PaymentRequest {
 
 const AccountsReceivable = () => {
   const { toast } = useToast();
+  const { activeEmpresa } = useAuth();
   const [titles, setTitles] = useState<ReceivableTitle[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
@@ -285,6 +288,27 @@ const AccountsReceivable = () => {
       setHasFetchedInitialList(true);
     }
   }, [startDate, endDate]);
+
+  const isFirstEmpresaRender = useRef(true);
+  useEffect(() => {
+    if (isFirstEmpresaRender.current) {
+      isFirstEmpresaRender.current = false;
+      return;
+    }
+    setTitles([]);
+    setFilteredTitles([]);
+    setSelectedTitles(new Set());
+    setPaymentRequests([]);
+    setCurrentPage(1);
+    fetchBanks();
+    fetchPaymentTypes();
+    if (startDate && endDate) {
+      fetchTitles();
+    }
+    if (activeTab === "requests") {
+      fetchPaymentRequests();
+    }
+  }, [activeEmpresa]);
 
   useEffect(() => {
     fetchBanks();
@@ -597,9 +621,10 @@ const AccountsReceivable = () => {
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="titles">Títulos a Receber</TabsTrigger>
               <TabsTrigger value="requests">Baixas Solicitadas</TabsTrigger>
+              <TabsTrigger value="ofx">Importar OFX</TabsTrigger>
             </TabsList>
 
             {/* Tab 1: Títulos a Receber */}
@@ -1486,6 +1511,11 @@ const AccountsReceivable = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Tab 3: Importar OFX */}
+            <TabsContent value="ofx" className="space-y-6">
+              <OfxReconciliation type="ar" onBaixaConfirmada={fetchPaymentRequests} />
             </TabsContent>
           </Tabs>
         </div>

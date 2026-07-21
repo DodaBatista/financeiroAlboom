@@ -1,5 +1,4 @@
-import { callAPI } from "@/utils/api";
-import { getCompanyFromUrl } from "../utils/company";
+import { callAPISmart } from "@/utils/api";
 
 export interface AppointmentQuery {
     pageNumber: number;
@@ -19,8 +18,6 @@ interface FetchAppointmentsResponse {
 }
 
 export const fetchAppointments = async (params: AppointmentQuery): Promise<FetchAppointmentsResponse> => {
-    const empresa = getCompanyFromUrl();
-
     const requestData = {
         start_type: "other",
         type: params.type || "",
@@ -37,7 +34,7 @@ export const fetchAppointments = async (params: AppointmentQuery): Promise<Fetch
         is_csv: 0,
     };
     try {
-        const response = await callAPI("events/paginate", requestData, "POST");
+        const response = await callAPISmart("events/paginate", requestData, "POST");
 
         return {
             appointments: response.rows || [],

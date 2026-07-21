@@ -46,6 +46,8 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useDebounce } from "use-debounce";
 
+import { OfxReconciliation } from "@/components/OfxReconciliation";
+import { useAuth } from "@/contexts/AuthContext";
 import { bankService } from "@/services/bankService";
 import { fetchContactsService } from "@/services/contactService";
 import { fetchFreelancersService } from "@/services/freelancerService";
@@ -110,6 +112,7 @@ interface PaymentRequest {
 
 const AccountsPayable = () => {
   const { toast } = useToast();
+  const { activeEmpresa } = useAuth();
   const [titles, setTitles] = useState<PayableTitle[]>([]);
   const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -330,6 +333,27 @@ const AccountsPayable = () => {
       setHasFetchedInitialList(true);
     }
   }, [startDate, endDate]);
+
+  const isFirstEmpresaRender = useRef(true);
+  useEffect(() => {
+    if (isFirstEmpresaRender.current) {
+      isFirstEmpresaRender.current = false;
+      return;
+    }
+    setTitles([]);
+    setFilteredTitles([]);
+    setSelectedTitles(new Set());
+    setPaymentRequests([]);
+    setCurrentPage(1);
+    fetchBanks();
+    fetchPaymentTypes();
+    if (startDate && endDate) {
+      fetchTitles();
+    }
+    if (activeTab === "requests") {
+      fetchPaymentRequests();
+    }
+  }, [activeEmpresa]);
 
   useEffect(() => {
     fetchBanks();
@@ -662,9 +686,10 @@ const AccountsPayable = () => {
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="titles">Títulos a Pagar</TabsTrigger>
               <TabsTrigger value="requests">Baixas Solicitadas</TabsTrigger>
+              <TabsTrigger value="ofx">Importar OFX</TabsTrigger>
             </TabsList>
 
             {/* Tab 1: Títulos a Pagar */}
@@ -1824,6 +1849,11 @@ const AccountsPayable = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Tab 3: Importar OFX */}
+            <TabsContent value="ofx" className="space-y-6">
+              <OfxReconciliation type="ap" onBaixaConfirmada={fetchPaymentRequests} />
             </TabsContent>
           </Tabs>
         </div>

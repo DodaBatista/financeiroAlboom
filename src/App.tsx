@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import AccountsPayablePage from "@/pages/AccountsPayablePage";
 import AccountsReceivablePage from "@/pages/AccountsReceivablePage";
+import AdminUsersPage from "@/pages/AdminUsersPage";
+import AdminSystemCompaniesPage from "@/pages/AdminSystemCompaniesPage";
 import Login from "@/pages/Login";
 import PaymentRequestsPage from "@/pages/PaymentRequestsPage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -30,7 +32,7 @@ const App = () => (
             <Route
               path="/accounts-payable"
               element={
-                <Layout>
+                <Layout requiredPage="accounts-payable">
                   <AccountsPayablePage />
                 </Layout>
               }
@@ -38,7 +40,7 @@ const App = () => (
             <Route
               path="/accounts-receivable"
               element={
-                <Layout>
+                <Layout requiredPage="accounts-receivable">
                   <AccountsReceivablePage />
                 </Layout>
               }
@@ -46,7 +48,7 @@ const App = () => (
             <Route
               path="/appointments"
               element={
-                <Layout>
+                <Layout requiredPage="appointments">
                   <Appointments />
                 </Layout>
               }
@@ -54,8 +56,24 @@ const App = () => (
             <Route
               path="/payment-requests"
               element={
-                <Layout>
+                <Layout requiredPage="payment-requests">
                   <PaymentRequestsPage />
+                </Layout>
+              }
+            />
+            <Route
+              path="/admin/usuarios"
+              element={
+                <Layout adminOnly>
+                  <AdminUsersPage />
+                </Layout>
+              }
+            />
+            <Route
+              path="/admin/empresas-sistema"
+              element={
+                <Layout adminOnly>
+                  <AdminSystemCompaniesPage />
                 </Layout>
               }
             />

@@ -4,6 +4,7 @@ export interface ApprovalLink {
   id: string;
   user_id: string;
   user_name?: string;
+  empresa: string;
   approver_department_id: string;
   approver_department_name?: string;
   approver_director_id: string;
@@ -15,6 +16,7 @@ export interface ApprovalLink {
 export interface ApprovalLinkPayload {
   id?: string;
   user_id: string;
+  empresa: string;
   approver_department_id: string;
   approver_director_id: string;
 }
@@ -52,6 +54,7 @@ export const deleteApprovalLink = async (id: string) => {
 export const fetchApprovalLinks = async (filters: {
   page?: number;
   limit?: number;
+  empresa?: string;
 }) => {
   try {
     const response = await callAPIN8N('payment_requests/approval_link/list', filters, 'payment_requests/approval_link/list');

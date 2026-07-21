@@ -1,6 +1,9 @@
 import { clearAuthTokens, loginAPI, setAuthTokens } from '@/utils/api';
-import { getCompanyDisplayName, getCompanyFromUrl } from '@/utils/company';
+import { clearActiveEmpresa, getActiveEmpresa, setActiveEmpresa } from '@/utils/activeCompany';
+import { getCompanyDisplayName } from '@/utils/company';
 import React, { createContext, ReactNode, useContext, useState } from 'react';
+
+export type PageKey = 'accounts-payable' | 'accounts-receivable' | 'appointments' | 'payment-requests';
 
 interface User {
   id: string;
@@ -8,13 +11,20 @@ interface User {
   email: string;
   empresa: string;
   empresaDisplay: string;
+  homeEmpresa: string;
+  isAdmin: boolean;
+  allowedPages: PageKey[];
+  allowedCompanies: string[];
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string, empresa: string, empresaDisplay?: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  hasPage: (page: PageKey) => boolean;
+  activeEmpresa: string | null;
+  switchCompany: (empresa: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,7 +45,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem('user');
     const storedTokens = localStorage.getItem('authTokens');
-    
+
     // Only restore user if both user data and tokens exist
     if (stored && storedTokens) {
       try {
@@ -50,32 +60,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return null;
   });
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const [activeEmpresa, setActiveEmpresaState] = useState<string | null>(() => getActiveEmpresa());
+
+  const login = async (username: string, password: string, empresa: string, empresaDisplay?: string): Promise<boolean> => {
     try {
-      const result = await loginAPI(username, password);
+      const result = await loginAPI(username, password, empresa);
 
       // Check if login was successful (adapt based on actual API response structure)
       if (result && result.user && result.token && result.tokenAlboom) {
-        const empresa = getCompanyFromUrl();
-        const userData = {
+        // Fallback para logins antigos ou usuários ainda não cadastrados em app_users:
+        // loga normalmente mas não enxerga nenhuma página até um admin liberar via /admin/usuarios.
+        const permissions = result.permissions || {
+          isAdmin: false,
+          allowedPages: [],
+          allowedCompanies: [empresa],
+        };
+
+        const userData: User = {
           id: result.user.id,
           name: result.user.name || username,
           email: result.user.email,
           empresa,
-          empresaDisplay: getCompanyDisplayName(empresa)
+          empresaDisplay: empresaDisplay || getCompanyDisplayName(empresa),
+          homeEmpresa: empresa,
+          isAdmin: !!permissions.isAdmin,
+          allowedPages: permissions.allowedPages || [],
+          allowedCompanies: permissions.allowedCompanies?.length ? permissions.allowedCompanies : [empresa],
         };
-        
+
         // Store tokens separately from user data
         setAuthTokens({
           token: result.token,
           tokenAlboom: result.tokenAlboom
         });
-        
+
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
+
+        setActiveEmpresa(empresa);
+        setActiveEmpresaState(empresa);
+
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Login failed:', error);
@@ -86,13 +113,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     setUser(null);
     clearAuthTokens();
+    clearActiveEmpresa();
+    setActiveEmpresaState(null);
+  };
+
+  const hasPage = (page: PageKey): boolean => {
+    if (!user) return false;
+    return user.isAdmin || user.allowedPages.includes(page);
+  };
+
+  const switchCompany = (empresa: string) => {
+    if (!user) return;
+    if (!user.allowedCompanies.includes(empresa)) {
+      console.error(`Usuário não tem acesso liberado à empresa "${empresa}"`);
+      return;
+    }
+    setActiveEmpresa(empresa);
+    setActiveEmpresaState(empresa);
   };
 
   const value = {
     user,
     login,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    hasPage,
+    activeEmpresa,
+    switchCompany,
   };
 
   return (

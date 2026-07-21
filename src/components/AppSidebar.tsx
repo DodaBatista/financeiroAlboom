@@ -9,34 +9,16 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Calendar, CreditCard, Receipt } from "lucide-react";
+import { APP_PAGES } from "@/config/pages";
+import { useAuth } from "@/contexts/AuthContext";
+import { KeyRound, ShieldCheck } from "lucide-react";
 import { NavLink } from "react-router-dom";
-
-const menuItems = [
-  {
-    title: "Contas a Pagar",
-    url: "/accounts-payable",
-    icon: CreditCard,
-  },
-  {
-    title: "Contas a Receber",
-    url: "/accounts-receivable",
-    icon: Receipt,
-  },
-  {
-    title: "Agendamentos",
-    url: "/appointments",
-    icon: Calendar,
-  },
-  {
-    title: "Solicitações de Pagamento",
-    url: "/payment-requests",
-    icon: CreditCard,
-  },
-];
 
 export function AppSidebar() {
   const { state } = useSidebar();
+  const { user, hasPage } = useAuth();
+
+  const menuItems = APP_PAGES.filter((page) => hasPage(page.key));
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -66,6 +48,44 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {user?.isAdmin && (
+                <SidebarMenuItem key="admin">
+                  <SidebarMenuButton asChild className="w-full">
+                    <NavLink
+                      to="/admin/usuarios"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                          isActive
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                        }`
+                      }
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                      {state === "expanded" && <span>Administração</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {user?.isAdmin && (
+                <SidebarMenuItem key="admin-empresas-sistema">
+                  <SidebarMenuButton asChild className="w-full">
+                    <NavLink
+                      to="/admin/empresas-sistema"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                          isActive
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                        }`
+                      }
+                    >
+                      <KeyRound className="h-4 w-4" />
+                      {state === "expanded" && <span>Empresas de Sistema</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -33,9 +33,10 @@ import {
   RotateCcw,
   Search,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
 import { fetchAppointments as fetchAppointmentsService } from "@/services/appointmentService";
 import { fetchEventTypesService } from "@/services/eventTypeService";
 import {
@@ -77,6 +78,7 @@ interface AppointmentProcessed {
 
 const Appointments = () => {
   const { toast } = useToast();
+  const { activeEmpresa } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [processedAppointments, setProcessedAppointments] = useState<
@@ -302,6 +304,27 @@ const Appointments = () => {
   useEffect(() => {
     setSortConfig({ key: "start_date", direction: "ASC" });
   }, []);
+
+  const isFirstEmpresaRender = useRef(true);
+  useEffect(() => {
+    if (isFirstEmpresaRender.current) {
+      isFirstEmpresaRender.current = false;
+      return;
+    }
+    setAppointments([]);
+    setFilteredAppointments([]);
+    setSelectedAppointments(new Set());
+    setProcessedAppointments([]);
+    setCurrentPage(1);
+    setProcessedCurrentPage(1);
+    fetchEventTypes();
+    if (startDate && endDate) {
+      fetchAppointments();
+    }
+    if (activeTab === "requests" && processedStartDate && processedEndDate) {
+      fetchProcessedAppointments();
+    }
+  }, [activeEmpresa]);
 
   const totalPages = Math.ceil(totalAppointments / itemsPerPage);
   const paginatedAppointments = filteredAppointments;

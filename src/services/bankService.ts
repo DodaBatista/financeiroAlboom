@@ -1,8 +1,8 @@
-import { callAPI } from "../utils/api";
+import { callAPISmart } from "../utils/api";
 
 export const bankService = {
   fetchBanks: async () => {
-    const response = await callAPI(
+    const response = await callAPISmart(
       "banks/paginate",
       {
         type: "all",

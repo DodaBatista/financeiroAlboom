@@ -1,8 +1,8 @@
-import { callAPI } from "@/utils/api";
+import { callAPISmart } from "@/utils/api";
 
 export const fetchEventTypesService = async (): Promise<any[]> => {
   try {
-    const response = await callAPI(
+    const response = await callAPISmart(
       "eventtypes",
       {},
       "GET"

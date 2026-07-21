@@ -1,12 +1,12 @@
 import { clearAuthTokens, getAuthTokens } from "../utils/api";
-import { getCompanyFromUrl } from "../utils/company";
+import { getActiveEmpresa } from "../utils/activeCompany";
 
 export const API_BASE_URL = 'https://n8np7.risystems.online/webhook/scheduling';
 
 export const getProcessedAppointments = async (filters: any): Promise<any> => {
   try {
 
-    const empresa = getCompanyFromUrl();
+    const empresa = getActiveEmpresa();
     const tokens = getAuthTokens();
 
     if (!tokens) throw new Error("No authentication tokens available");
@@ -59,7 +59,7 @@ export const getProcessedAppointments = async (filters: any): Promise<any> => {
 
 export async function exportProcessedAppointments(filters: any) {
   try {
-    const empresa = getCompanyFromUrl();
+    const empresa = getActiveEmpresa();
     filters = { empresa, ...filters };
 
     const response = await fetch(

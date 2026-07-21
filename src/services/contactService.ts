@@ -1,4 +1,4 @@
-import { callAPI } from "../utils/api";
+import { callAPISmart } from "../utils/api";
 
 export interface Contact {
   id: string;
@@ -24,7 +24,7 @@ export const fetchContactsService = async (
       searchTerm: searchTerm || "",
     };
 
-    const response = await callAPI("contacts/paginate", payload, "POST");
+    const response = await callAPISmart("contacts/paginate", payload, "POST");
 
     return (
       response?.rows?.map((item: any) => ({

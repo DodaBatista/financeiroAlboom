@@ -1,4 +1,4 @@
-import { callAPI } from "../utils/api";
+import { callAPISmart } from "../utils/api";
 
 export interface Freelancer {
   id: string;
@@ -21,7 +21,7 @@ export const fetchFreelancersService = async (
       searchTerm: searchTerm || "",
     };
 
-    const response = await callAPI("users/paginate", payload, "POST");
+    const response = await callAPISmart("users/paginate", payload, "POST");
 
     return (
       response?.rows

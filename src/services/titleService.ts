@@ -1,4 +1,4 @@
-import { callAPI } from "../utils/api";
+import { callAPISmart } from "../utils/api";
 import { getProcessedTitles } from "./processedTitlesService";
 
 export interface Title {
@@ -9,6 +9,7 @@ export interface Title {
     amount: string;
     customer_name: string;
     customer_lastname: string;
+    customer_cpf?: string;
     document_number?: string;
     document_type_name?: string;
     order_id?: string;
@@ -42,7 +43,7 @@ export const fetchTitlesService = async (
     data: FetchTitlesRequest
 ): Promise<FetchTitlesResponse> => {
     try {
-        const response = await callAPI(
+        const response = await callAPISmart(
             "account_trans/paginate_apr",
             data,
             "POST"

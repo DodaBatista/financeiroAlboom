@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { CompanySwitcher } from '@/components/CompanySwitcher';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ChevronDown, LogOut } from 'lucide-react';
@@ -46,6 +47,8 @@ export function Navbar() {
       </div>
 
       {user && (
+        <div className="flex items-center gap-3">
+        <CompanySwitcher />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button 
@@ -75,6 +78,7 @@ export function Navbar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       )}
     </header>
   );

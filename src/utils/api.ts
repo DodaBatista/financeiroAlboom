@@ -1,4 +1,5 @@
 import { getCompanyFromUrl } from './company';
+import { getActiveEmpresa, getHomeEmpresa } from './activeCompany';
 
 export const API_BASE_URL = 'https://n8np7.risystems.online/webhook/finance';
 
@@ -41,9 +42,9 @@ const getAuthHeaders = (): Record<string, string> => {
 export const callAPI = async (
   endpoint: string,
   data: any = {},
-  method: string | "POST"
+  method: string | "POST",
+  empresa: string = getHomeEmpresa() || getCompanyFromUrl()
 ): Promise<any> => {
-  const empresa = getCompanyFromUrl();
   const formattedURL = `https://${empresa}.alboomcrm.com/api/${endpoint}`;
 
   try {
@@ -72,7 +73,7 @@ export const callAPI = async (
 };
 
 export const callAPIN8N = async (endpoint: string, data: any = {}, uri: string = null): Promise<any> => {
-  const empresa = getCompanyFromUrl();
+  const empresa = getActiveEmpresa() || getCompanyFromUrl();
 
   const API_BASE_URL = 'https://n8np7.risystems.online/webhook';
 
@@ -125,6 +126,65 @@ export const callAPIN8N = async (endpoint: string, data: any = {}, uri: string =
   }
 };
 
+/**
+ * Chama a API Alboom de uma empresa que não é necessariamente a "casa" do usuário logado,
+ * via proxy n8n com token de sistema daquela empresa (ver docs/n8n-contrato-permissoes.md).
+ * Usar apenas quando a empresa alvo for diferente da empresa do token pessoal (`callAPI` direto
+ * não funciona nesse caso, pois o token do usuário só é válido no tenant Alboom dele).
+ */
+export const callAlboomProxy = async (
+  empresa: string,
+  endpoint: string,
+  method: string,
+  data: any = {}
+): Promise<any> => {
+  const PROXY_BASE_URL = 'https://n8np7.risystems.online/webhook/alboom_proxy/call';
+  const tokens = getAuthTokens();
+
+  try {
+    const response = await fetch(PROXY_BASE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': tokens?.token ? `Bearer ${tokens.token}` : '',
+      },
+      body: JSON.stringify({ empresa, endpoint, method, data }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Proxy error details:', errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Proxy call failed for ${empresa}/${endpoint}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Escolhe automaticamente entre chamada direta (`callAPI`, empresa "casa" do usuário) e o proxy
+ * n8n (`callAlboomProxy`, empresa extra liberada) conforme a empresa ativa selecionada no front.
+ * Substitui `callAPI` nos serviços que precisam respeitar a troca de empresa (títulos,
+ * agendamentos, bancos, freelancers, contatos).
+ */
+export const callAPISmart = async (
+  endpoint: string,
+  data: any = {},
+  method: string = 'POST'
+): Promise<any> => {
+  const homeEmpresa = getHomeEmpresa();
+  const targetEmpresa = getActiveEmpresa() || homeEmpresa || '';
+
+  if (!homeEmpresa || targetEmpresa === homeEmpresa) {
+    return callAPI(endpoint, data, method, homeEmpresa || getCompanyFromUrl());
+  }
+
+  return callAlboomProxy(targetEmpresa, endpoint, method, data);
+};
+
 export const callAPIProxy = async (
   endpoint: string,
   data: any = {},
@@ -157,9 +217,7 @@ export const callAPIProxy = async (
   }
 };
 
-export const loginAPI = async (username: string, password: string): Promise<any> => {
-  const empresa = getCompanyFromUrl();
-
+export const loginAPI = async (username: string, password: string, empresa: string): Promise<any> => {
   try {
     const response = await fetch(`${API_BASE_URL}/login`, {
       method: 'POST',

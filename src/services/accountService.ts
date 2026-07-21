@@ -1,4 +1,4 @@
-import { callAPI } from "../utils/api";
+import { callAPISmart } from "../utils/api";
 
 export interface AccountPlan {
   id: string;
@@ -12,8 +12,8 @@ export const fetchAccountPlansService = async (): Promise<AccountPlan[]> => {
   try {
     // Buscar Centros de Custo (C) e Despesas (D) em paralelo
     const [costs, expenses] = await Promise.all([
-      callAPI("accounts?subtype=C", {}, "GET"),
-      callAPI("accounts?subtype=D", {}, "GET")
+      callAPISmart("accounts?subtype=C", {}, "GET"),
+      callAPISmart("accounts?subtype=D", {}, "GET")
     ]);
 
     // Combinar os resultados

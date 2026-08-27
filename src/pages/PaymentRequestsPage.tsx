@@ -117,6 +117,7 @@ const PaymentRequestsPage: React.FC = () => {
     approvedDirector: string;
     userId: string;
     modality: string;
+    sentToSystem: 'all' | 'true' | 'false';
   }
 
   const [selectedFilters, setSelectedFilters] = useState<FilterState>({
@@ -126,6 +127,7 @@ const PaymentRequestsPage: React.FC = () => {
     personType: 'all',
     approvedDepartment: 'all',
     approvedDirector: 'all',
+    sentToSystem: 'false',
     userId: 'all',
     modality: 'all'
   });
@@ -356,6 +358,7 @@ const PaymentRequestsPage: React.FC = () => {
         approved_director: selectedFilters.approvedDirector,
         id_user: selectedFilters.userId,
         modality: selectedFilters.modality,
+        sent_to_system: selectedFilters.sentToSystem,
         page: currentPage,
         limit: itemsPerPage,
       };
@@ -1791,6 +1794,26 @@ const PaymentRequestsPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Linha 5: Enviado p/ Sistema */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <Label>Enviado p/ Sistema</Label>
+                  <Select
+                    value={selectedFilters.sentToSystem}
+                    onValueChange={(value) => setSelectedFilters(prev => ({ ...prev, sentToSystem: value as 'all' | 'true' | 'false' }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Não enviado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="false">Não enviado</SelectItem>
+                      <SelectItem value="true">Enviado</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               {/* Linha 4: Botões de filtrar */}
               <div className="flex flex-col sm:flex-row justify-end gap-2">
                 <Button
@@ -1805,7 +1828,8 @@ const PaymentRequestsPage: React.FC = () => {
                       approvedDepartment: 'all',
                       approvedDirector: 'all',
                       userId: 'all',
-                      modality: 'all'
+                      modality: 'all',
+                      sentToSystem: 'false'
                     });
                     setSearchTerm('');
                     

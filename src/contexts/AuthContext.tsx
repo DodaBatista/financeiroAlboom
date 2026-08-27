@@ -49,7 +49,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Only restore user if both user data and tokens exist
     if (stored && storedTokens) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Sessão salva por uma versão anterior ao suporte multi-empresa não tem esses campos
+        // (allowedPages/allowedCompanies vêm como undefined). Sem essa checagem, hasPage() e
+        // switchCompany() estouram TypeError ao chamar .includes() em undefined assim que a
+        // página carrega — e como o dado ruim continua salvo, o erro se repete a cada reload
+        // (efeito de "cache preso"). Tratamos como sessão inválida e forçamos um novo login
+        // uma única vez; não afeta usuários com sessão já no formato atual.
+        if (
+          !parsed ||
+          !Array.isArray(parsed.allowedPages) ||
+          !Array.isArray(parsed.allowedCompanies) ||
+          typeof parsed.homeEmpresa !== 'string'
+        ) {
+          localStorage.removeItem('user');
+          localStorage.removeItem('authTokens');
+          return null;
+        }
+        return parsed;
       } catch {
         // Clear invalid data
         localStorage.removeItem('user');
@@ -119,12 +136,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const hasPage = (page: PageKey): boolean => {
     if (!user) return false;
-    return user.isAdmin || user.allowedPages.includes(page);
+    return user.isAdmin || (user.allowedPages ?? []).includes(page);
   };
 
   const switchCompany = (empresa: string) => {
     if (!user) return;
-    if (!user.allowedCompanies.includes(empresa)) {
+    if (!(user.allowedCompanies ?? []).includes(empresa)) {
       console.error(`Usuário não tem acesso liberado à empresa "${empresa}"`);
       return;
     }

@@ -857,11 +857,22 @@ const PaymentRequestsPage: React.FC = () => {
     // Verificar se todas as solicitações têm aprovação de departamento
     const requestsToSend = requests.filter(r => ids.includes(r.id));
     const notApproved = requestsToSend.filter(r => normalizeApprovalValue(r.approved_department) !== 'APPROVED');
-    
+
     if (notApproved.length > 0) {
       toast({
         title: 'Erro',
         description: 'Apenas solicitações com aprovação de departamento podem ser enviadas para o sistema.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Evita reenvio duplicado: solicitações que já têm id_payment_alboom já foram enviadas.
+    const alreadySent = requestsToSend.filter(r => !!r.id_payment_alboom);
+    if (alreadySent.length > 0) {
+      toast({
+        title: 'Erro',
+        description: 'Uma ou mais solicitações selecionadas já foram enviadas para o sistema anteriormente.',
         variant: 'destructive',
       });
       return;
@@ -1886,14 +1897,15 @@ const PaymentRequestsPage: React.FC = () => {
                     <th className="p-4 text-left">Dt Vencto</th>
                     <th className="p-4 text-left">Aprov Depto</th>
                     <th className="p-4 text-left">Aprov Diretor</th>
+                    <th className="p-4 text-left">Nº Título</th>
                     <th className="p-4 text-left">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
                   {requestsLoading ? (
-                    <tr key="loading"><td colSpan={13} className="p-8 text-center"><div className="flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin mr-2"/>Carregando...</div></td></tr>
+                    <tr key="loading"><td colSpan={14} className="p-8 text-center"><div className="flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin mr-2"/>Carregando...</div></td></tr>
                   ) : requests.length===0 ? (
-                    <tr key="empty"><td colSpan={13} className="p-8 text-center text-muted-foreground">Nenhum registro encontrado.</td></tr>
+                    <tr key="empty"><td colSpan={14} className="p-8 text-center text-muted-foreground">Nenhum registro encontrado.</td></tr>
                   ) : (
                     requests.map((r, index)=> (
                       <tr key={r.id || `request-${index}`} className="border-b hover:bg-muted/20 transition-colors">
@@ -1924,6 +1936,13 @@ const PaymentRequestsPage: React.FC = () => {
                           }
                         </td>
                         <td className="p-4">
+                          {r.id_payment_alboom ? (
+                            <Badge variant="success">{r.id_payment_alboom}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="p-4">
                           <div className="relative">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -1948,7 +1967,7 @@ const PaymentRequestsPage: React.FC = () => {
                                     Enviar p/ Diretor
                                   </DropdownMenuItem>
                                 )}
-                                {normalizeApprovalValue(r.approved_department) === 'APPROVED' && (
+                                {normalizeApprovalValue(r.approved_department) === 'APPROVED' && !r.id_payment_alboom && (
                                   <DropdownMenuItem onClick={() => openSendToSystemModal([r.id])} className="text-primary">
                                     <Send className="h-4 w-4 mr-2" />
                                     Enviar p/ Sistema
@@ -2003,9 +2022,17 @@ const PaymentRequestsPage: React.FC = () => {
                         <div className="text-right">{r.contract_number}</div>
                         <div className="text-muted-foreground">Tipo</div>
                         <div className="text-right">{r.payment_type}</div>
+                        <div className="text-muted-foreground">Nº Título</div>
+                        <div className="text-right">
+                          {r.id_payment_alboom ? (
+                            <Badge variant="success">{r.id_payment_alboom}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-          
+
                     {/* Status de Aprovação */}
                     <div className="grid grid-cols-2 gap-2">
                         <div>
@@ -2023,11 +2050,11 @@ const PaymentRequestsPage: React.FC = () => {
                           })()}
                         </div>
                     </div>
-          
+
                     {/* Ações */}
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-                      <Checkbox 
-                        checked={selectedIds.has(r.id)} 
+                      <Checkbox
+                        checked={selectedIds.has(r.id)}
                         onCheckedChange={(c)=>handleSelect(r.id, !!c)}
                       />
                       <div className="flex items-center gap-2">
@@ -2044,7 +2071,7 @@ const PaymentRequestsPage: React.FC = () => {
                             <Send className="h-4 w-4"/>
                           </Button>
                         )}
-                        {normalizeApprovalValue(r.approved_department) === 'APPROVED' && (
+                        {normalizeApprovalValue(r.approved_department) === 'APPROVED' && !r.id_payment_alboom && (
                           <Button size="sm" variant="default" className="bg-primary hover:bg-primary/90" onClick={() => openSendToSystemModal([r.id])}>
                             <Send className="h-4 w-4"/>
                           </Button>

@@ -62,6 +62,11 @@ export interface PaymentRequestItem {
   updated_at: string;
   approved_department: string;
   approved_director: string;
+
+  // Preenchidos pelo workflow n8n quando a solicitação é enviada para o sistema (Alboom):
+  // add_alboom vira true e id_payment_alboom recebe o id do título/lançamento criado lá.
+  add_alboom?: boolean;
+  id_payment_alboom?: string;
 }
 
 export const createPaymentRequest = async (data: PaymentRequestPayload) => {

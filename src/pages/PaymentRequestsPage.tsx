@@ -40,7 +40,7 @@ import {
   fetchApprovalLinks,
   ApprovalLink,
 } from '@/services/approvalLinkService';
-import { Loader2, Search, Plus, Edit2, Trash2, Eye, MoreVertical, Send, FileText, Users, Link } from 'lucide-react';
+import { Loader2, Search, Plus, Edit2, Trash2, Eye, MoreVertical, Send, FileText, Users, Link, RefreshCw } from 'lucide-react';
 import { callAPIN8N } from '@/utils/api';
 import { fetchContactsService } from '@/services/contactService';
 import { fetchFreelancersService } from '@/services/freelancerService';
@@ -824,7 +824,7 @@ const PaymentRequestsPage: React.FC = () => {
       // Verificar se todas as solicitações têm aprovação de departamento
       const requestsToSend = requests.filter(r => ids.includes(r.id));
       const notApproved = requestsToSend.filter(r => normalizeApprovalValue(r.approved_department) !== 'APPROVED');
-      
+
       if (notApproved.length > 0) {
         toast({
           title: 'Erro',
@@ -838,7 +838,7 @@ const PaymentRequestsPage: React.FC = () => {
       await callAPIN8N('', {
         data: requestsToSend
       }, 'payment_requests/sendmessagediretor');
-      
+
       toast({
         title: 'Enviado',
         description: `${ids.length} solicitação(s) enviada(s) para aprovação do diretor`,
@@ -849,6 +849,43 @@ const PaymentRequestsPage: React.FC = () => {
       toast({
         title: 'Erro',
         description: (error as Error)?.message || 'Erro ao enviar para o diretor',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendToDepartment = async (ids: string[]) => {
+    setLoading(true);
+    try {
+      // Só faz sentido reenviar pra quem ainda está pendente de aprovação do departamento
+      const requestsToSend = requests.filter(r => ids.includes(r.id));
+      const notPending = requestsToSend.filter(r => normalizeApprovalValue(r.approved_department) !== 'PENDING');
+
+      if (notPending.length > 0) {
+        toast({
+          title: 'Erro',
+          description: 'Só é possível reenviar a aprovação de solicitações com aprovação de departamento pendente.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Reenviar mensagem de aprovação para o aprovador do departamento
+      await callAPIN8N('', {
+        data: requestsToSend
+      }, 'payment_requests/resendmessagedepartamento');
+
+      toast({
+        title: 'Reenviado',
+        description: `Aprovação reenviada para o aprovador do departamento (${ids.length} solicitação(ões))`,
+      });
+      setSelectedIds(new Set());
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: (error as Error)?.message || 'Erro ao reenviar para o departamento',
         variant: 'destructive',
       });
     } finally {
@@ -1874,6 +1911,15 @@ const PaymentRequestsPage: React.FC = () => {
                   {selectedIds.size} solicitação(s) selecionada(s)
                 </span>
                 <Button
+                  onClick={() => handleResendToDepartment(Array.from(selectedIds))}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Reenviar p/ Departamento
+                </Button>
+                <Button
                   onClick={() => handleSendToDirector(Array.from(selectedIds))}
                   variant="outline"
                   size="sm"
@@ -1979,6 +2025,12 @@ const PaymentRequestsPage: React.FC = () => {
                                   <Eye className="h-4 w-4 mr-2" />
                                   Visualizar
                                 </DropdownMenuItem>
+                                {normalizeApprovalValue(r.approved_department) === 'PENDING' && (
+                                  <DropdownMenuItem onClick={() => handleResendToDepartment([r.id])}>
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    Reenviar p/ Departamento
+                                  </DropdownMenuItem>
+                                )}
                                 {normalizeApprovalValue(r.approved_department) === 'PENDING' && normalizeApprovalValue(r.approved_director) === 'PENDING' && (
                                   <DropdownMenuItem onClick={() => openDeleteConfirm(r.id)} className="text-destructive">
                                     <Trash2 className="h-4 w-4 mr-2" />
@@ -2085,6 +2137,11 @@ const PaymentRequestsPage: React.FC = () => {
                         <Button size="sm" variant="ghost" onClick={() => handleView(r)}>
                           <Eye className="h-4 w-4"/>
                         </Button>
+                        {normalizeApprovalValue(r.approved_department) === 'PENDING' && (
+                          <Button size="sm" variant="outline" onClick={() => handleResendToDepartment([r.id])}>
+                            <RefreshCw className="h-4 w-4"/>
+                          </Button>
+                        )}
                         {normalizeApprovalValue(r.approved_department) === 'PENDING' && normalizeApprovalValue(r.approved_director) === 'PENDING' && (
                           <Button size="sm" variant="destructive" onClick={()=>openDeleteConfirm(r.id)}>
                             <Trash2 className="h-4 w-4"/>
